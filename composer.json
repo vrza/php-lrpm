@@ -1,0 +1,15 @@
+{
+    "name": "php-lrpm/php-lrpm",
+    "description": "PHP Long Running Process Manager",
+    "keywords": ["process", "manager"],
+    "license": "BSD-3-Clause",
+    "type": "project",
+    "require": {
+        "php": "^7.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "PHPLRPM\\": "src/"
+        }
+    }
+}
