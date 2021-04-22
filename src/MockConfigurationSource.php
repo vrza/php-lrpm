@@ -4,7 +4,7 @@
 namespace PHPLRPM;
 
 
-class MockDatabase implements Database
+class MockConfigurationSource implements ConfigurationSource
 {
     private $mtime;
 

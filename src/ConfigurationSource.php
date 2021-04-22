@@ -4,7 +4,7 @@
 namespace PHPLRPM;
 
 
-interface Database
+interface ConfigurationSource
 {
     public function loadConfiguration(): array;
 }

@@ -136,7 +136,7 @@ class WorkerMetadata {
 
     public function setDbState(int $id, int $dbState) {
         if (!array_key_exists($id, $this->idToMetadata)) {
-            throw new InvalidArgumentException("Cant update job with id ". $id . " to database state " . $dbState . ", id doesn't exist" . PHP_EOL);
+            throw new InvalidArgumentException("Cant update job with id ". $id . " to configuration state " . $dbState . ", id doesn't exist" . PHP_EOL);
         }
         $this->idToMetadata[$id]['state']['dbState'] = $dbState;
     }

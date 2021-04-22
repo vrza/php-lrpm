@@ -1,2 +1,7 @@
+# PHP composer
 composer.lock
 vendor/
+
+# editors
+.idea/
+*.swp

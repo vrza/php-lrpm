@@ -2,7 +2,7 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 
-use \PHPLRPM\MockDatabase;
+use \PHPLRPM\MockConfigurationSource;
 use \PHPLRPM\ProcessManager;
 
 const EXIT_INVALID_ARGUMENTS = 1;
@@ -12,6 +12,6 @@ if (count($argv) < 2) {
     exit(EXIT_INVALID_ARGUMENTS);
 }
 
-$db = new MockDatabase();
+$db = new MockConfigurationSource();
 $pm = new ProcessManager($db);
 $pm->run();

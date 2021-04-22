@@ -12,14 +12,14 @@ class ProcessManager {
     private $secondsBetweenConfigPolls = 10;
     private $secondsBetweenProcessStatePolls = 2;
 
-    private $database;
+    private $configurationSource;
 
     private $start = [];
     private $stop = [];
     private $restart = [];
 
-    public function __construct(Database $database) {
-        $this->database = $database;
+    public function __construct(ConfigurationSource $configurationSource) {
+        $this->configurationSource = $configurationSource;
         $this->workersMetadata = new WorkerMetadata();
         pcntl_signal(SIGCHLD,  function ($signal) {
             fwrite(STDOUT, "==> Caught SIGCHLD" . PHP_EOL);
@@ -96,8 +96,8 @@ class ProcessManager {
         if ($this->timeOfLastConfigPoll + $this->secondsBetweenConfigPolls <= time()) {
             $this->timeOfLastConfigPoll = time(); // TODO wait a full cycle even when db is not reachable
             try {
-                $newWorkers = $this->database->loadConfiguration();
-                fwrite(STDOUT, "==> Loaded fresh config from database:" . PHP_EOL);
+                $newWorkers = $this->configurationSource->loadConfiguration();
+                fwrite(STDOUT, "==> Loaded fresh configuration:" . PHP_EOL);
                 var_dump($newWorkers);
                 $this->workersMetadata->purgeRemovedJobs();
                 foreach ($newWorkers as $jobId => $newJobConfig) {
