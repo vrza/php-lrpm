@@ -49,7 +49,7 @@ class WorkerProcess {
 
     public function work($arg) {
         $this->ppid = posix_getppid();
-        // $this->worker->init();
+        $this->worker->start();
         while (true) { // worker loop
             sleep(2);
             //$this->testCycle(); // BREAKME to test zombie reaping
