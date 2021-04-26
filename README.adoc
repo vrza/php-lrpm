@@ -14,19 +14,22 @@ Currently not intended to be running as PID 1, nor was it tested in this role.
 
 === Simple
 
-TODO describe design
+PHP-LRPM is built on top of POSIX process management facilities. PHP-LRPM starts its subprocesses via fork/exec and subprocesses don’t daemonize.
 
 === Efficient
 
-PHP-LRPM starts its subprocesses via fork/exec and subprocesses don’t daemonize. The operating system signals PHP-LRPM immediately when a process terminates.
+The operating system signals PHP-LRPM immediately when a process terminates. PHP-LRPM will in turn attempt to restart the terminated process.
 
 === Flexible
 
-Exponential backoff on process restart, unlike most other process managers that will try several times and fail the process until operator intervention.
+PHP-LRPM uses exponential backoff when attempting to restart a process, unlike most other process managers that will try several times and fail the process until operator intervention.
 
 == Usage
 
-TODO describe usage
+1. Implement the ConfigurationSource. This object exposes a public method loadConfiguration(), that returns an associative array containing the configuration for all the workers.
+2. Implement the Worker. This object exposes two public methods, start() and cycle(). The child process will call start(), and then enter an endless loop, where it calls cycle(), and then checks for a shutdown condition (usually, the death of the LRPM supervisor process).
+
+See example.php for a full running example with more details.
 
 == Development
 
