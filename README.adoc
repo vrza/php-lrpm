@@ -6,7 +6,7 @@ PHP-LRPM is a library for managing long running PHP processes.
 
 Dynamic management of long running processes. Similar in function to process managers like daemontools or supervisord, but integrates with PHP code.
 
-Can periodically reload configuration, e.g. from a database, and start/stop proceses accordingly.
+Can periodically reload configuration, e.g. from a database, and start/stop processes accordingly.
 
 Currently not intended to be running as PID 1, nor was it tested in this role.
 
@@ -22,14 +22,14 @@ The operating system signals PHP-LRPM immediately when a process terminates. PHP
 
 === Flexible
 
-PHP-LRPM uses exponential backoff when attempting to restart a process, unlike most other process managers that will try several times and fail the process until operator intervention.
+PHP-LRPM uses exponential backoff when attempting to restart a process; some process managers will try several times in quick succession and fail the process until operator intervention.
 
 == Usage
 
-1. Implement the ConfigurationSource. This object exposes a public method loadConfiguration(), that returns an associative array containing the configuration for all the workers.
-2. Implement the Worker. This object exposes two public methods, start() and cycle(). The child process will call start(), and then enter an endless loop, where it calls cycle(), and then checks for a shutdown condition (usually, the death of the LRPM supervisor process).
+1. Implement the `ConfigurationSource`. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers.
+2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the death of the LRPM supervisor process).
 
-See example.php for a full running example with more details.
+See `example.php` for a full running example with more details.
 
 == Development
 
