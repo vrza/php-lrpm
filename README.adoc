@@ -10,7 +10,7 @@ Can periodically reload configuration, e.g. from a database, and start/stop proc
 
 Currently not intended to be running as PID 1, nor was it tested in this role.
 
-This talk by Giorgio Sironi from Dutch PHP Conference in 2017 (https://youtu.be/MJkFHMOCEkg) covers some of the problems and challenges when implementing long running PHP processes.
+This talk by Giorgio Sironi given at the Dutch PHP Conference in 2017 (https://youtu.be/MJkFHMOCEkg) covers some of the problems and challenges when implementing long running PHP processes.
 
 == Features
 
