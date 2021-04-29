@@ -10,7 +10,7 @@ Can periodically reload configuration, e.g. from a database, and start/stop proc
 
 Currently not intended to be running as PID 1, nor was it tested in this role.
 
-This talk by Giorgio Sironi given at the Dutch PHP Conference in 2017 (https://youtu.be/MJkFHMOCEkg) covers some of the problems and challenges when implementing long running PHP processes.
+This https://youtu.be/MJkFHMOCEkg[talk by Giorgio Sironi] given at the Dutch PHP Conference in 2017 covers some of the problems and challenges when implementing long running PHP processes.
 
 == Features
 
@@ -42,6 +42,12 @@ See `example.php` for a full running example with more details.
 PHP-LRPM keeps metadata in an associative array. For efficient lookups by PID, a separate index is maintained.
 
 This functionality could be offloaded to a generic library that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work).
+
+==== Blocking shutdown
+
+Wait for children after sending SIGTERM, follow up with SIGKILL if child doesn't respond to SIGTERM.
+
+Implement blocking shutdown that waits for all children to exit.
 
 == Some name ideas that were considered
 
