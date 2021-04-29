@@ -21,7 +21,7 @@ class ProcessManager {
     public function __construct(ConfigurationSource $configurationSource) {
         $this->configurationSource = $configurationSource;
         $this->workersMetadata = new WorkerMetadata();
-        pcntl_signal(SIGCHLD,  function ($signal) {
+        pcntl_signal(SIGCHLD, function ($signal) {
             fwrite(STDOUT, "==> Caught SIGCHLD" . PHP_EOL);
             $this->sigchld_handler($signal);
         });
@@ -81,7 +81,7 @@ class ProcessManager {
         fwrite(STDOUT, "Exited:" . PHP_EOL);
         var_dump($exited);
         var_dump($this->workersMetadata->getAll());
-        echo '================================================================';
+        fwrite(STDOUT, '================================================================' . PHP_EOL);
         flush();
         $jobsToRespawn = array_filter($exited, function ($id) { return $this->workersMetadata->hasId($id); });
         fwrite(STDOUT, "==> Respawning jobs:" . PHP_EOL);
@@ -127,7 +127,8 @@ class ProcessManager {
     }
 
     public function run() {
-        while (true) { // process manager main loop
+        // process manager main loop
+        while (true) {
             $this->pollDbForConfigChanges();
             fwrite(STDOUT, '==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
             foreach ($this->workersMetadata->restart as $id => $job) {
