@@ -4,8 +4,15 @@
     "type": "library",
     "keywords": ["php", "long-running", "process", "manager", "posix"],
     "license": "BSD-3-Clause",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/vrza/array-with-secondary-keys"
+         }
+    ],
     "require": {
-        "php": "^7.1 || ^8.0"
+        "php": "^7.1 || ^8.0",
+        "vrza/array-with-secondary-keys": "dev-main"
     },
     "autoload": {
         "psr-4": {
