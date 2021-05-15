@@ -91,11 +91,11 @@ class WorkerMetadata {
 
     public function scheduleRestart(int $id): int {
         if (!$this->has($id)) {
-            fwrite(STDERR, 'Will not restart job ' . $id . ' it doesn\'t exist' . PHP_EOL);
+            fwrite(STDERR, "Will not restart job $id, it does not exist" . PHP_EOL);
             return $id;
         }
         if ($this->idToMetadata[$id]['state']['dbState'] == self::REMOVED) {
-            fwrite(STDERR, 'Will not restart job ' . $id . ' it was removed' . PHP_EOL);
+            fwrite(STDERR, "Will not restart job $id, it was removed" . PHP_EOL);
             return $id;
         }
         $job = &$this->idToMetadata[$id];
@@ -103,20 +103,20 @@ class WorkerMetadata {
         if ($now < $job['state']['startedAt'] + self::SHORT_RUN_TIME_SECONDS) {
             $job['state']['restartAt'] = $now + $job['state']['backoffInterval'];
             $job['state']['backoffInterval'] *= self::BACKOFF_MULTIPLIER;
-            fwrite(STDOUT, "Job " . $id . " run time was too short, backing off for seconds: " . $job['state']['backoffInterval'] . PHP_EOL);
+            fwrite(STDOUT, "Job $id run time was too short, backing off for seconds: " . $job['state']['backoffInterval'] . PHP_EOL);
             var_dump($job['state']);
         } else {
-            fwrite(STDOUT, "Job " . $id . " run time was longer than " . self::SHORT_RUN_TIME_SECONDS . ", resetting backoff" . PHP_EOL);
+            fwrite(STDOUT, "Job $id run time was longer than " . self::SHORT_RUN_TIME_SECONDS . ", resetting backoff" . PHP_EOL);
             $job['state']['restartAt'] = $now;
             $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
         }
-        fwrite(STDOUT, 'id ' . $id . ' scheduled to restart at ' . $job['state']['restartAt'] . PHP_EOL);
+        fwrite(STDOUT, "Job with id $id scheduled to restart at " . $job['state']['restartAt'] . PHP_EOL);
         return $id;
     }
 
     public function updateStartedJob(int $id, int $pid): int {
         if (!$this->has($id)) {
-            throw new InvalidArgumentException("Can not update started job, id ". $id . " doesn't exist" . PHP_EOL);
+            throw new InvalidArgumentException("Cannot update started job, id $id does not exist" . PHP_EOL);
         }
         $this->idToMetadata[$id]['state']['startedAt'] = time();
         $this->idToMetadata[$id]['state']['pid'] = $pid;
@@ -130,7 +130,7 @@ class WorkerMetadata {
 
     public function setDbState(int $id, int $dbState) {
         if (!array_key_exists($id, $this->idToMetadata)) {
-            throw new InvalidArgumentException("Cant update job with id ". $id . " to configuration state " . $dbState . ", id doesn't exist" . PHP_EOL);
+            throw new InvalidArgumentException("Cannot update job with id $id to configuration state $dbState, id does not exist" . PHP_EOL);
         }
         $this->idToMetadata[$id]['state']['dbState'] = $dbState;
     }
@@ -141,21 +141,21 @@ class WorkerMetadata {
 
     public function updateJob(int $id, array $config): int {
         if (!array_key_exists($id, $this->idToMetadata)) {
-            throw new InvalidArgumentException("Cant update job with id ". $id . ", id doesn't exist" . PHP_EOL);
+            throw new InvalidArgumentException("Cannot update job with id $id, id doesn't exist" . PHP_EOL);
         }
-        fwrite(STDOUT, 'Setting fresh config for job ' . $id . PHP_EOL);
+        fwrite(STDOUT, "Setting fresh config for job $id" . PHP_EOL);
         $this->idToMetadata[$id]['config'] = $config;
         $this->idToMetadata[$id]['state']['dbState'] = self::UPDATED;
         $this->idToMetadata[$id]['state']['restartAt'] = time();
-        fwrite(STDOUT, 'Resetting backoff for job ' . $id . PHP_EOL);
+        fwrite(STDOUT, "Resetting backoff for job $id" . PHP_EOL);
         $this->idToMetadata[$id]['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
         return $id;
     }
 
     public function addNewJob(int $id, array $config): int {
-        fwrite(STDOUT, 'Adding new job ' . $id . PHP_EOL);
+        fwrite(STDOUT, "Adding new job $id" . PHP_EOL);
         $this->idToMetadata[$id]['config'] = $config;
-        fwrite(STDOUT, 'Resetting backoff for job ' . $id . PHP_EOL);
+        fwrite(STDOUT, "Resetting backoff for job $id" . PHP_EOL);
         $this->idToMetadata[$id]['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
         $this->idToMetadata[$id]['state']['dbState'] = self::ADDED;
         return $id;
@@ -163,7 +163,7 @@ class WorkerMetadata {
 
     public function removeJob(int $id) {
         if (!array_key_exists($id, $this->idToMetadata)) {
-            throw new InvalidArgumentException("Cant remove job with id ". $id . ", id doesn't exist" . PHP_EOL);
+            throw new InvalidArgumentException("Cannot remove job with id $id, id does not exist" . PHP_EOL);
         }
         if (!empty($this->idToMetadata['state']['pid'])) {
             $this->idToMetadata[$id]['state']['dbState'] = self::REMOVED;
@@ -174,9 +174,9 @@ class WorkerMetadata {
         foreach ($this->idToMetadata as $id => $metadata) {
             if ($metadata['state']['dbState'] == self::REMOVED) {
                 if (!empty($metadata['state']['pid'])) {
-                    fwrite(STDERR, 'Not purging job ' . $id . ' it is still running with PID' . $metadata['state']['pid'] . PHP_EOL);
+                    fwrite(STDERR, "Not purging job $id, it is still running with PID" . $metadata['state']['pid'] . PHP_EOL);
                 } else {
-                    fwrite(STDOUT, 'Purging job ' . $id . PHP_EOL);
+                    fwrite(STDOUT, "Purging job $id" . PHP_EOL);
                     unset($this->idToMetadata[$id]);
                 }
             }
@@ -185,13 +185,13 @@ class WorkerMetadata {
 
     public function updateStateSyncMap() {
         foreach ($this->idToMetadata as $id => $job) {
-            fwrite(STDOUT, "State sync map checking job " . $id . PHP_EOL); flush();
+            fwrite(STDOUT, "State sync map checking job $id" . PHP_EOL); flush();
             switch($job['state']['dbState']) {
                 case self::UNCHANGED:
                     // for all UNCHANGED jobs
                     // - check if they need to be restarted:
                     // - if their PID == null AND their restartAt < now(), slate for start
-                    fwrite(STDOUT, "job " . $id . " is UNCHANGED" . PHP_EOL);
+                    fwrite(STDOUT, "job $id is UNCHANGED" . PHP_EOL);
                     var_dump($job['state']);
                     if (empty($job['state']['pid']) && !empty($job['state']['restartAt']) && $job['state']['restartAt'] < time()) {
                         fwrite(STDOUT, "job restart time reached, slating start" . PHP_EOL);
@@ -199,7 +199,7 @@ class WorkerMetadata {
                     break;
                 case self::REMOVED:
                     //for all REMOVED jobs, slate for shutdown if they have a PID
-                    fwrite(STDOUT, "job " . $id . " is REMOVED" . PHP_EOL);
+                    fwrite(STDOUT, "job $id is REMOVED" . PHP_EOL);
                     if (!empty($job['state']['pid'])) {
                         fwrite(STDOUT, "slating pid " . $job['state']['pid'] . " for shutdown" . PHP_EOL);
                         $this->stop[$id] = $job;
@@ -207,13 +207,13 @@ class WorkerMetadata {
                     break;
                 case self::ADDED:
                     // for all ADDED jobs, slate for start
-                    fwrite(STDOUT, "job " . $id . " is ADDED" . PHP_EOL);
+                    fwrite(STDOUT, "job $id is ADDED" . PHP_EOL);
                     var_dump($job['state']);
                     $this->start[$id] = $job;
                     break;
                 case self::UPDATED:
                     // for all UPDATED jobs, slate for restart if job is running, slate for start if not running
-                    fwrite(STDOUT, "job " . $id . " is UPDATED" . PHP_EOL);
+                    fwrite(STDOUT, "job $id is UPDATED" . PHP_EOL);
                     var_dump($job['state']);
                     if (!empty($job['state']['pid'])) {
                         fwrite(STDOUT, "slating pid " . $job['state']['pid'] . " for restart" . PHP_EOL);
@@ -224,7 +224,7 @@ class WorkerMetadata {
                     }
                     break;
                 default:
-                    fwrite(STDERR, "Job " . $id . " has invalid dbState " . $job['state']['dbState'] . PHP_EOL);
+                    fwrite(STDERR, "Job $id has invalid dbState " . $job['state']['dbState'] . PHP_EOL);
             }
         }
     }
