@@ -92,7 +92,7 @@ class WorkerMetadata {
     public function scheduleRestart(int $id): int {
         if (!$this->has($id)) {
             fwrite(STDERR, 'Will not restart job ' . $id . ' it doesn\'t exist' . PHP_EOL);
-            return false;
+            return $id;
         }
         if ($this->idToMetadata[$id]['state']['dbState'] == self::REMOVED) {
             fwrite(STDERR, 'Will not restart job ' . $id . ' it was removed' . PHP_EOL);
