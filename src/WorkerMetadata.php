@@ -1,8 +1,8 @@
 <?php
 
-
 namespace PHPLRPM;
 
+use InvalidArgumentException;
 
 /*
  * idToMetadata = [
@@ -49,7 +49,7 @@ class WorkerMetadata {
     public function getJobsById(array $ids): array {
         $result = [];
         foreach ($ids as $id) {
-            if ($this->hasId($id)) {
+            if ($this->has($id)) {
                 $result[$id] = $this->getById($id);
             }
         }
@@ -58,7 +58,7 @@ class WorkerMetadata {
 
     public function getJobByPid(int $pid): array {
         if (empty($pid) || !is_int($pid) || $pid < 1) {
-            throw new \http\Exception\InvalidArgumentException("PID must be a positive integer");
+            throw new InvalidArgumentException("PID must be a positive integer");
         }
         $id = $this->pidToId[$pid];
         return $this->idToMetadata[$id];
@@ -90,33 +90,32 @@ class WorkerMetadata {
     }
 
     public function scheduleRestart(int $id): int {
-        if (!array_key_exists($id, $this->idToMetadata)) {
+        if (!$this->has($id)) {
             fwrite(STDERR, 'Will not restart job ' . $id . ' it doesn\'t exist' . PHP_EOL);
             return false;
         }
-        $job = &$this->idToMetadata[$id];
         if ($this->idToMetadata[$id]['state']['dbState'] == self::REMOVED) {
             fwrite(STDERR, 'Will not restart job ' . $id . ' it was removed' . PHP_EOL);
-            return $this->idToMetadata[$id];
+            return $id;
         }
+        $job = &$this->idToMetadata[$id];
         $now = time();
-        if ($now < $this->idToMetadata[$id]['state']['startedAt'] + self::SHORT_RUN_TIME_SECONDS) {
-            $this->idToMetadata[$id]['state']['restartAt'] = $now + $this->idToMetadata[$id]['state']['backoffInterval'];
-            //$this->idToMetadata[$id]['state']['backoffInterval'] *= self::BACKOFF_MULTIPLIER;
+        if ($now < $job['state']['startedAt'] + self::SHORT_RUN_TIME_SECONDS) {
+            $job['state']['restartAt'] = $now + $job['state']['backoffInterval'];
             $job['state']['backoffInterval'] *= self::BACKOFF_MULTIPLIER;
-            fwrite(STDOUT, "Job " . $id . " run time was too short, backing off for seconds: " . $this->idToMetadata[$id]['state']['backoffInterval'] . PHP_EOL);
-            var_dump($this->idToMetadata[$id]['state']);
+            fwrite(STDOUT, "Job " . $id . " run time was too short, backing off for seconds: " . $job['state']['backoffInterval'] . PHP_EOL);
+            var_dump($job['state']);
         } else {
             fwrite(STDOUT, "Job " . $id . " run time was longer than " . self::SHORT_RUN_TIME_SECONDS . ", resetting backoff" . PHP_EOL);
-            $this->idToMetadata[$id]['state']['restartAt'] = $now;
-            $this->idToMetadata[$id]['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
+            $job['state']['restartAt'] = $now;
+            $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
         }
-        fwrite(STDOUT, 'id ' . $id . ' scheduled to restart at ' . $this->idToMetadata[$id]['state']['restartAt'] . PHP_EOL);
+        fwrite(STDOUT, 'id ' . $id . ' scheduled to restart at ' . $job['state']['restartAt'] . PHP_EOL);
         return $id;
     }
 
     public function updateStartedJob(int $id, int $pid): int {
-        if (!array_key_exists($id, $this->idToMetadata)) {
+        if (!$this->has($id)) {
             throw new InvalidArgumentException("Can not update started job, id ". $id . " doesn't exist" . PHP_EOL);
         }
         $this->idToMetadata[$id]['state']['startedAt'] = time();
@@ -127,11 +126,6 @@ class WorkerMetadata {
 
     public function getAllPids(): array {
         return array_keys($this->pidToId);
-    }
-
-    public function hasId(int $id): bool {
-        fwrite(STDOUT, "Checking id " . $id . ": " . array_key_exists($id, $this->idToMetadata) . PHP_EOL);
-        return array_key_exists($id, $this->idToMetadata);
     }
 
     public function setDbState(int $id, int $dbState) {

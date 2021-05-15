@@ -83,7 +83,7 @@ class ProcessManager {
         var_dump($this->workersMetadata->getAll());
         fwrite(STDOUT, '================================================================' . PHP_EOL);
         flush();
-        $jobsToRespawn = array_filter($exited, function ($id) { return $this->workersMetadata->hasId($id); });
+        $jobsToRespawn = array_filter($exited, function ($id) { return $this->workersMetadata->has($id); });
         fwrite(STDOUT, "==> Respawning jobs:" . PHP_EOL);
         var_dump($jobsToRespawn);
         //$this->startProcesses($jobsToRespawn);
