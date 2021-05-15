@@ -33,15 +33,17 @@ PHP-LRPM uses exponential backoff when attempting to restart a process; some pro
 
 See `example.php` for a full running example with more details.
 
-== Development
+== Development roadmap
 
-=== Roadmap / TODO list
+=== Completed
 
 ==== Improve metadata handling
 
 PHP-LRPM keeps metadata in an associative array. For efficient lookups by PID, a separate index is maintained.
 
 This functionality could be offloaded to a generic library that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work).
+
+=== TODO
 
 ==== Blocking shutdown
 
