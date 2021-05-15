@@ -1,8 +1,6 @@
 <?php
 
-
 namespace PHPLRPM;
-
 
 class WorkerProcess {
     const EXIT_SUCCESS = 0;

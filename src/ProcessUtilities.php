@@ -1,8 +1,6 @@
 <?php
 
-
 namespace PHPLRPM;
-
 
 class ProcessUtilities {
     public static function reapAnyChildren(): array {

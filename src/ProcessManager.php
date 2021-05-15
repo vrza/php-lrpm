@@ -1,8 +1,6 @@
 <?php
 
-
 namespace PHPLRPM;
-
 
 class ProcessManager {
     const EXIT_SUCCESS = 0;
