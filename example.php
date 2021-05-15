@@ -2,7 +2,7 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 
-use \PHPLRPM\MockConfigurationSource;
+use \PHPLRPM\Test\MockConfigurationSource;
 use \PHPLRPM\ProcessManager;
 
 const EXIT_INVALID_ARGUMENTS = 1;

@@ -16,7 +16,8 @@
     },
     "autoload": {
         "psr-4": {
-            "PHPLRPM\\": "src/"
+            "PHPLRPM\\": "src/",
+            "PHPLRPM\\Test\\": "test/"
         }
     }
 }

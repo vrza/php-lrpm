@@ -1,6 +1,8 @@
 <?php
 
-namespace PHPLRPM;
+namespace PHPLRPM\Test;
+
+use PHPLRPM\Worker;
 
 class MockWorker implements Worker
 {

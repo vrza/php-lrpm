@@ -1,8 +1,8 @@
 <?php
 
+namespace PHPLRPM\Test;
 
-namespace PHPLRPM;
-
+use PHPLRPM\ConfigurationSource;
 
 class MockConfigurationSource implements ConfigurationSource
 {
@@ -18,17 +18,17 @@ class MockConfigurationSource implements ConfigurationSource
         $configurationItems = [
             23 => [
                 'name' => 'twenty-three',
-                'workerClass' => '\PHPLRPM\MockWorker',
+                'workerClass' => '\PHPLRPM\Test\MockWorker',
                 'mtime' => $this->mtime
             ],
             42 => [
                 'name' => 'forty-two',
-                'workerClass' => '\PHPLRPM\MockWorker',
+                'workerClass' => '\PHPLRPM\Test\MockWorker',
                 'mtime' => time()
             ],
             33 => [
                 'name' => 'thirty-three',
-                'workerClass' => '\PHPLRPM\MockWorker',
+                'workerClass' => '\PHPLRPM\Test\MockWorker',
                 'mtime' => $this->mtime
             ]
         ];
