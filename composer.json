@@ -4,11 +4,16 @@
     "type": "library",
     "keywords": ["php", "long-running", "process", "manager", "posix"],
     "license": "BSD-3-Clause",
+    "minimum-stability": "dev",
     "repositories": [
         {
             "type": "vcs",
             "url": "https://github.com/vrza/array-with-secondary-keys"
-         }
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/vrza/cardinal-collections"
+        }
     ],
     "require": {
         "php": "^7.1 || ^8.0",

@@ -3,7 +3,7 @@
 namespace PHPLRPM;
 
 use InvalidArgumentException;
-use VladimirVrzic\ArrayWithSecondaryKeys\ArrayWithSecondaryKeys;
+use CardinalCollections\ArrayWithSecondaryKeys\ArrayWithSecondaryKeys;
 
 /*
  * (int) => [
