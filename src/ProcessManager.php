@@ -2,6 +2,8 @@
 
 namespace PHPLRPM;
 
+use Exception;
+
 class ProcessManager {
     const EXIT_SUCCESS = 0;
 
