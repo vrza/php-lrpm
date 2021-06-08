@@ -130,7 +130,7 @@ class WorkerMetadata {
     }
 
     public function getAllPids(): array {
-        return $this->metadata->secondaryKeys($self::PID_KEY);
+        return $this->metadata->secondaryKeys(self::PID_KEY);
     }
 
     public function setDbState(int $id, int $dbState) {

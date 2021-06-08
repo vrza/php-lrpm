@@ -47,7 +47,7 @@ class ProcessManager {
             $workerProcess = new WorkerProcess($worker);
             $workerProcess->work($job['config']);
             fwrite(STDOUT, '--> Child exiting' . PHP_EOL);
-            exit(self::EXIT_SUCCESSS);
+            exit(self::EXIT_SUCCESS);
         } else if ($pid > 0) { // parent process
             fwrite(STDOUT, '==> Forked a child with PID ' . $pid . PHP_EOL);
             $this->workersMetadata->updateStartedJob($id, $pid);
