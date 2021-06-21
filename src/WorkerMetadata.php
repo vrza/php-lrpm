@@ -174,7 +174,7 @@ class WorkerMetadata {
         if (!$this->has($id)) {
             throw new InvalidArgumentException("Cannot remove job with id $id, id does not exist" . PHP_EOL);
         }
-        if ($this->metadata->has($id . '.' . PID_KEY)) {
+        if ($this->metadata->has($id . '.' . self::PID_KEY)) {
             $this->metadata->put("$id.state.dbState", self::REMOVED);
         }
     }
