@@ -13,11 +13,24 @@
         {
             "type": "vcs",
             "url": "https://github.com/vrza/cardinal-collections"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/vrza/php-tipc"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/vrza/php-pretty-print"
         }
     ],
     "require": {
-        "php": "^7.1 || ^8.0",
-        "vrza/array-with-secondary-keys": "dev-main"
+        "php": ">=7.1",
+        "ext-json": "*",
+        "ext-pcntl": "*",
+        "ext-posix": "*",
+        "vrza/array-with-secondary-keys": "dev-main",
+        "vrza/php-tipc": "dev-main",
+        "vrza/php-pretty-print": "dev-main"
     },
     "autoload": {
         "psr-4": {

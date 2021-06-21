@@ -4,7 +4,11 @@ namespace PHPLRPM;
 
 use Exception;
 
-class ProcessManager {
+use TIPC\MessageHandler;
+use TIPC\UnixSocketStreamServer;
+
+class ProcessManager implements MessageHandler
+{
     const EXIT_SUCCESS = 0;
 
     private $workersMetadata;
@@ -14,17 +18,36 @@ class ProcessManager {
 
     private $configurationSource;
 
-    private $start = [];
-    private $stop = [];
-    private $restart = [];
+    private $messageServer;
+    private $shouldRun = true;
 
-    public function __construct(ConfigurationSource $configurationSource) {
+    public function __construct(ConfigurationSource $configurationSource)
+    {
         $this->configurationSource = $configurationSource;
         $this->workersMetadata = new WorkerMetadata();
         pcntl_signal(SIGCHLD, function ($signal) {
             fwrite(STDOUT, "==> Caught SIGCHLD" . PHP_EOL);
             $this->sigchld_handler($signal);
         });
+
+        $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
+        $this->messageServer =  new UnixSocketStreamServer($file, $this);
+    }
+
+    public function handleMessage(string $msg): string
+    {
+        $help = 'Valid commands: help, status, stop';
+        switch($msg) {
+            case 'help':
+                return "lrpm: $help";
+            case 'status':
+                return json_encode($this->workersMetadata->getAll());
+            case 'stop':
+                $this->shouldRun = false;
+                return 'lrpm: Shutting down process manager';
+            default:
+                return "lrpm: '$msg' is not a valid command. $help";
+        }
     }
 
     private function sigchld_handler($signal) {
@@ -50,7 +73,7 @@ class ProcessManager {
             $workerProcess->work($job['config']);
             fwrite(STDOUT, '--> Child exiting' . PHP_EOL);
             exit(self::EXIT_SUCCESS);
-        } else if ($pid > 0) { // parent process
+        } elseif ($pid > 0) { // parent process
             fwrite(STDOUT, '==> Forked a child with PID ' . $pid . PHP_EOL);
             $this->workersMetadata->updateStartedJob($id, $pid);
         } else {
@@ -70,7 +93,7 @@ class ProcessManager {
         if (empty($job['state']['pid'])) {
             fwrite(STDERR, 'Cannot stop job ' . $id . ', it is not running' . PHP_EOL);
             return;
-        };
+        }
         posix_kill($job['state']['pid'],SIGTERM);
     }
 
@@ -127,8 +150,9 @@ class ProcessManager {
     }
 
     public function run() {
+        $this->messageServer->listen();
         // process manager main loop
-        while (true) {
+        while ($this->shouldRun) {
             $this->pollDbForConfigChanges();
             fwrite(STDOUT, '==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
             foreach ($this->workersMetadata->restart as $id => $job) {
@@ -150,9 +174,14 @@ class ProcessManager {
             pcntl_signal_dispatch();
             //fwrite(STDOUT, "Workers metadata after cleanup:" . PHP_EOL);
             //var_dump($this->workersMetadata->getAll());
+
+            $this->messageServer->checkMessages();
+
             flush();
             sleep($this->secondsBetweenProcessStatePolls);
         }
+
+        fwrite(STDERR, "Clean shutdown." . PHP_EOL);
     }
 
 }

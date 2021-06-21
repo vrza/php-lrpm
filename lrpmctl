@@ -1,0 +1,81 @@
+#!/usr/bin/env php
+<?php
+
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+use TIPC\UnixSocketStreamClient;
+use PrettyPrint\Table;
+use PrettyPrint\AnsiSeq;
+
+const EXIT_USAGE = 2;
+const EXIT_NO_CONNECTION = 3;
+
+if ($argc < 2) {
+    fwrite(STDERR, "Usage: ${argv[0]} <command>" . PHP_EOL);
+    exit(EXIT_USAGE);
+}
+$msg = $argv[1];
+
+$file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
+$client = new UnixSocketStreamClient($file);
+
+if ($client->connect() === false) {
+    exitNoConnection();
+}
+if ($client->sendMessage($msg) === false) {
+    exitNoConnection();
+}
+if (($response = $client->receiveMessage()) === false) {
+    exitNoConnection();
+}
+
+if ($msg === 'status') {
+    fwrite(STDOUT, renderStatusTable($response));
+} else {
+    fwrite(STDOUT, $response . PHP_EOL);
+}
+
+$client->disconnect();
+
+function renderStatusTable($jsonStatus)
+{
+    $status = json_decode($jsonStatus, true);
+    if (!is_array($status)) {
+        fwrite(STDERR, "Invalid response from lrpm daemon: $jsonStatus" . PHP_EOL);
+        return;
+    }
+    $header = [
+        AnsiSeq::addIfTty('BOLD') . 'ID'     . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'PID'    . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'UPTIME' . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'START'  . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'NAME'   . AnsiSeq::addIfTty('RESET')
+    ];
+    $align = ['r', 'r', 'r', 'l', 'l'];
+    $output = [$header];
+    foreach ($status as $id => $metadata) {
+        $config = $metadata['config'];
+        $name = $config['name'];
+        $state = $metadata['state'];
+        $startedAt = $state['startedAt'];
+        $pid = $state['pid'];
+        $pidFmt = $pid === null
+            ? AnsiSeq::addIfTty('RED') . 'none' . AnsiSeq::addIfTty('RESET')
+            : AnsiSeq::addIfTty('GREEN') . $pid . AnsiSeq::addIfTty('RESET');
+        $startedAtDateTime = new DateTime();
+        $startedAtDateTime->setTimestamp($startedAt);
+        $uptime = $startedAtDateTime->diff(new DateTime('now'));
+        $uptimeFmt = $uptime->format('%h:%I:%S');
+        $startedAtFmt = date('Y-m-d H:i:s', $startedAt);
+        $output[] = [$id, $pidFmt, $uptimeFmt, $startedAtFmt, $name];
+    }
+    return (new Table($output))->setAlignment($align);
+}
+
+function exitNoConnection()
+{
+    fwrite(STDERR, 'lrpm is not running' . PHP_EOL);
+    exit(EXIT_NO_CONNECTION);
+}
