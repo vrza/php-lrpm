@@ -37,7 +37,7 @@ class ProcessManager implements MessageHandler
     public function handleMessage(string $msg): string
     {
         $help = 'Valid commands: help, status, stop';
-        switch($msg) {
+        switch ($msg) {
             case 'help':
                 return "lrpm: $help";
             case 'status':
