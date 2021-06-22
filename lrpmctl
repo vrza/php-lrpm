@@ -49,27 +49,36 @@ function renderStatusTable($jsonStatus)
     $header = [
         AnsiSeq::addIfTty('BOLD') . 'ID'     . AnsiSeq::addIfTty('RESET'),
         AnsiSeq::addIfTty('BOLD') . 'PID'    . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'RSS'    . AnsiSeq::addIfTty('RESET'),
         AnsiSeq::addIfTty('BOLD') . 'UPTIME' . AnsiSeq::addIfTty('RESET'),
         AnsiSeq::addIfTty('BOLD') . 'START'  . AnsiSeq::addIfTty('RESET'),
         AnsiSeq::addIfTty('BOLD') . 'NAME'   . AnsiSeq::addIfTty('RESET')
     ];
-    $align = ['r', 'r', 'r', 'l', 'l'];
+    $align = ['r', 'r', 'r', 'r', 'l', 'l'];
     $output = [$header];
+    $redNone = AnsiSeq::addIfTty('RED') . 'none' . AnsiSeq::addIfTty('RESET');
+    $redNotAvailable = AnsiSeq::addIfTty('RED') . 'n/a' . AnsiSeq::addIfTty('RESET');
     foreach ($status as $id => $metadata) {
         $config = $metadata['config'];
         $name = $config['name'];
         $state = $metadata['state'];
         $startedAt = $state['startedAt'];
         $pid = $state['pid'];
-        $pidFmt = $pid === null
-            ? AnsiSeq::addIfTty('RED') . 'none' . AnsiSeq::addIfTty('RESET')
-            : AnsiSeq::addIfTty('GREEN') . $pid . AnsiSeq::addIfTty('RESET');
-        $startedAtDateTime = new DateTime();
-        $startedAtDateTime->setTimestamp($startedAt);
-        $uptime = $startedAtDateTime->diff(new DateTime('now'));
-        $uptimeFmt = $uptime->format('%h:%I:%S');
-        $startedAtFmt = date('Y-m-d H:i:s', $startedAt);
-        $output[] = [$id, $pidFmt, $uptimeFmt, $startedAtFmt, $name];
+        if ($pid === null) {
+            $pidFmt = $redNone;
+            $rssFmt = $uptimeFmt = $startedAtFmt = $redNotAvailable;
+        } else {
+            $pidFmt = AnsiSeq::addIfTty('GREEN') . $pid . AnsiSeq::addIfTty('RESET');
+            $rssFmt = PHP_OS === 'Linux'
+                ? linuxRssUsage($pid) * 4
+                : $redNotAvailable;
+            $startedAtDateTime = new DateTime();
+            $startedAtDateTime->setTimestamp($startedAt);
+            $uptime = $startedAtDateTime->diff(new DateTime('now'));
+            $uptimeFmt = $uptime->format('%h:%I:%S');
+            $startedAtFmt = date('Y-m-d H:i:s', $startedAt);
+        }
+        $output[] = [$id, $pidFmt, $rssFmt, $uptimeFmt, $startedAtFmt, $name];
     }
     return (new Table($output))->setAlignment($align);
 }
@@ -78,4 +87,24 @@ function exitNoConnection()
 {
     fwrite(STDERR, 'lrpm is not running' . PHP_EOL);
     exit(EXIT_NO_CONNECTION);
+}
+
+/**
+  * Returns RSS memory usage for a process, in pages.
+  * Uses Linux-specific stats from /proc.
+  * 1 page is 4096 bytes.
+  */
+function linuxRssUsage($pid = 'self')
+{
+    if (PHP_OS != 'Linux') {
+        throw new Exception('linuxRssUsage can only run on Linux');
+    }
+    $RSS_F = 23;
+    $FS = ' ';
+    $PAGE_SIZE_B = 4 * 1024;
+    $file = fopen("/proc/$pid/stat", 'r');
+    $line = fgets($file);
+    fclose($file);
+    $stats = explode($FS, $line);
+    return (int)$stats[$RSS_F];
 }
