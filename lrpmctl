@@ -58,25 +58,32 @@ function renderStatusTable($jsonStatus)
     $output = [$header];
     $redNone = AnsiSeq::addIfTty('RED') . 'none' . AnsiSeq::addIfTty('RESET');
     $redNotAvailable = AnsiSeq::addIfTty('RED') . 'n/a' . AnsiSeq::addIfTty('RESET');
+
+    $pids = [];
+    foreach ($status as $id => $metadata) {
+        if (isset($metadata['state']) && isset($metadata['state']['pid']) && $metadata['state']['pid'] !== null) {
+            $pids[] = $metadata['state']['pid'];
+        }
+    }
+    $ps = ps($pids, ['rss']);
+
     foreach ($status as $id => $metadata) {
         $config = $metadata['config'];
         $name = $config['name'];
         $state = $metadata['state'];
         $startedAt = $state['startedAt'];
-        $pid = $state['pid'];
-        if ($pid === null) {
-            $pidFmt = $redNone;
-            $rssFmt = $uptimeFmt = $startedAtFmt = $redNotAvailable;
-        } else {
+        $pid = $state['pid'] ?? null;
+        if ($pid !== null) {
             $pidFmt = AnsiSeq::addIfTty('GREEN') . $pid . AnsiSeq::addIfTty('RESET');
-            $rssFmt = PHP_OS === 'Linux'
-                ? linuxRssUsage($pid) * 4
-                : $redNotAvailable;
+            $rssFmt = $ps[$pid]['rss'];
             $startedAtDateTime = new DateTime();
             $startedAtDateTime->setTimestamp($startedAt);
             $uptime = $startedAtDateTime->diff(new DateTime('now'));
             $uptimeFmt = $uptime->format('%h:%I:%S');
             $startedAtFmt = date('Y-m-d H:i:s', $startedAt);
+        } else {
+            $pidFmt = $redNone;
+            $rssFmt = $uptimeFmt = $startedAtFmt = $redNotAvailable;
         }
         $output[] = [$id, $pidFmt, $rssFmt, $uptimeFmt, $startedAtFmt, $name];
     }
@@ -89,22 +96,22 @@ function exitNoConnection()
     exit(EXIT_NO_CONNECTION);
 }
 
-/**
-  * Returns RSS memory usage for a process, in pages.
-  * Uses Linux-specific stats from /proc.
-  * 1 page is 4096 bytes.
-  */
-function linuxRssUsage($pid = 'self')
+function ps(iterable $pids = [], iterable $format): array
 {
-    if (PHP_OS != 'Linux') {
-        throw new Exception('linuxRssUsage can only run on Linux');
+    if (count($pids) === 0 || count($format) === 0) {
+        return [];
     }
-    $RSS_F = 23;
-    $FS = ' ';
-    $PAGE_SIZE_B = 4 * 1024;
-    $file = fopen("/proc/$pid/stat", 'r');
-    $line = fgets($file);
-    fclose($file);
-    $stats = explode($FS, $line);
-    return (int)$stats[$RSS_F];
+    $pidsStr = implode(' ', $pids);
+    $fmtStr = implode(',', $format);
+    $cmd = 'ps -o pid,' . $fmtStr . ' ' . $pidsStr . ' | tail -n +2';
+    exec($cmd, $output);
+    $result = [];
+    foreach($output as $row) {
+        $fields = explode(' ', preg_replace('/\s+/', ' ', trim($row)));
+        $pid = array_shift($fields);
+        for ($i = 0; $i < count($format); $i++) {
+            $result[$pid][$format[$i]] = $fields[$i];
+        }
+    }
+    return $result;
 }
