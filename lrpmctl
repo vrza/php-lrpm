@@ -39,12 +39,12 @@ if ($msg === 'status') {
 
 $client->disconnect();
 
-function renderStatusTable($jsonStatus)
+function renderStatusTable($jsonStatus): ?Table
 {
     $status = json_decode($jsonStatus, true);
     if (!is_array($status)) {
         fwrite(STDERR, "Invalid response from lrpm daemon: $jsonStatus" . PHP_EOL);
-        return;
+        return null;
     }
     $header = [
         AnsiSeq::addIfTty('BOLD') . 'ID'     . AnsiSeq::addIfTty('RESET'),
@@ -105,13 +105,13 @@ function ps(iterable $pids = [], iterable $format): array
     $fmtStr = implode(',', $format);
     $cmd = 'ps -o pid,' . $fmtStr . ' ' . $pidsStr . ' | tail -n +2';
     exec($cmd, $output);
-    $result = [];
-    foreach($output as $row) {
+    $processes = [];
+    foreach ($output as $row) {
         $fields = explode(' ', preg_replace('/\s+/', ' ', trim($row)));
         $pid = array_shift($fields);
         for ($i = 0; $i < count($format); $i++) {
-            $result[$pid][$format[$i]] = $fields[$i];
+            $processes[$pid][$format[$i]] = $fields[$i];
         }
     }
-    return $result;
+    return $processes;
 }
