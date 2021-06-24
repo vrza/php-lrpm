@@ -115,7 +115,7 @@ function renderStatusTable(iterable $status, iterable $ps): Table
     return (new Table($output))->setAlignment($align);
 }
 
-function ps(iterable $pids = [], iterable $format = []): array
+function ps(iterable $pids, iterable $format): array
 {
     if (count($pids) === 0 || count($format) === 0) {
         return [];
