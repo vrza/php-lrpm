@@ -73,7 +73,7 @@ function renderStatusTable($jsonStatus): ?Table
         $state = $metadata['state'];
         $startedAt = $state['startedAt'];
         $pid = $state['pid'] ?? null;
-        if ($pid !== null) {
+        if ($pid !== null && isset($ps[$pid])) {
             $pidFmt = AnsiSeq::addIfTty('GREEN') . $pid . AnsiSeq::addIfTty('RESET');
             $rssFmt = $ps[$pid]['rss'];
             $startedAtDateTime = new DateTime();
@@ -103,8 +103,9 @@ function ps(iterable $pids = [], iterable $format): array
     }
     $pidsStr = implode(' ', $pids);
     $fmtStr = implode(',', $format);
-    $cmd = 'ps -o pid,' . $fmtStr . ' ' . $pidsStr . ' | tail -n +2';
+    $cmd = 'ps -o pid,' . $fmtStr . ' ' . $pidsStr;
     exec($cmd, $output);
+    array_shift($output);
     $processes = [];
     foreach ($output as $row) {
         $fields = explode(' ', preg_replace('/\s+/', ' ', trim($row)));
