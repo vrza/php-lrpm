@@ -1,0 +1,137 @@
+#!/usr/bin/env php
+<?php
+
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+use TIPC\UnixSocketStreamClient;
+use PrettyPrint\Table;
+use PrettyPrint\AnsiSeq;
+
+const EXIT_USAGE = 2;
+const EXIT_NO_CONNECTION = 3;
+const EXIT_INVALID_RESPONSE = 4;
+
+if ($argc < 2) {
+    fwrite(STDERR, "Usage: ${argv[0]} <command>" . PHP_EOL);
+    exit(EXIT_USAGE);
+}
+$request = $argv[1];
+
+$file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
+$client = new UnixSocketStreamClient($file);
+
+if ($client->connect() === false) {
+    exitNoConnection();
+}
+if ($client->sendMessage($request) === false) {
+    exitNoConnection();
+}
+if (($response = $client->receiveMessage()) === false) {
+    exitNoConnection();
+}
+$client->disconnect();
+
+handleResponse($request, $response);
+
+function exitNoConnection(): void
+{
+    fwrite(STDERR, 'lrpm is not running' . PHP_EOL);
+    exit(EXIT_NO_CONNECTION);
+}
+
+function handleResponse(string $msg, string $response): void
+{
+    if ($msg === 'status') {
+        statusResponseHandler($response);
+    } else {
+        genericResponseHandler($response);
+    }
+}
+
+function genericResponseHandler(string $response): void
+{
+    fwrite(STDOUT, $response . PHP_EOL);
+}
+
+function statusResponseHandler(string $response): void
+{
+    $status = json_decode($response, true);
+    if (!is_array($status)) {
+        fwrite(STDERR, "Invalid response from lrpm daemon: $response" . PHP_EOL);
+        exit(EXIT_INVALID_RESPONSE);
+    }
+    $ps = ps(pidsFromStatus($status), ['rss']);
+    fwrite(STDOUT, renderStatusTable($status, $ps));
+}
+
+function pidsFromStatus($status): array
+{
+    $pids = [];
+    foreach ($status as $_id => $metadata) {
+        if (isset($metadata['state']) && isset($metadata['state']['pid']) && $metadata['state']['pid'] !== null) {
+            $pids[] = $metadata['state']['pid'];
+        }
+    }
+    return $pids;
+}
+
+function renderStatusTable(iterable $status, iterable $ps): Table
+{
+    $header = [
+        AnsiSeq::addIfTty('BOLD') . 'ID'     . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'PID'    . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'RSS'    . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'UPTIME' . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'START'  . AnsiSeq::addIfTty('RESET'),
+        AnsiSeq::addIfTty('BOLD') . 'NAME'   . AnsiSeq::addIfTty('RESET')
+    ];
+    $align = ['r', 'r', 'r', 'r', 'l', 'l'];
+    $output = [$header];
+    $redNone = AnsiSeq::addIfTty('RED') . 'none' . AnsiSeq::addIfTty('RESET');
+    $redNotAvailable = AnsiSeq::addIfTty('RED') . 'n/a' . AnsiSeq::addIfTty('RESET');
+
+    foreach ($status as $id => $metadata) {
+        $config = $metadata['config'];
+        $name = $config['name'];
+        $state = $metadata['state'];
+        $startedAt = $state['startedAt'];
+        $pid = $state['pid'] ?? null;
+        if ($pid !== null && isset($ps[$pid])) {
+            $pidFmt = AnsiSeq::addIfTty('GREEN') . $pid . AnsiSeq::addIfTty('RESET');
+            $rssFmt = $ps[$pid]['rss'];
+            $startedAtDateTime = new DateTime();
+            $startedAtDateTime->setTimestamp($startedAt);
+            $uptime = $startedAtDateTime->diff(new DateTime('now'));
+            $uptimeFmt = $uptime->format('%h:%I:%S');
+            $startedAtFmt = date('Y-m-d H:i:s', $startedAt);
+        } else {
+            $pidFmt = $redNone;
+            $rssFmt = $uptimeFmt = $startedAtFmt = $redNotAvailable;
+        }
+        $output[] = [$id, $pidFmt, $rssFmt, $uptimeFmt, $startedAtFmt, $name];
+    }
+    return (new Table($output))->setAlignment($align);
+}
+
+function ps(iterable $pids = [], iterable $format = []): array
+{
+    if (count($pids) === 0 || count($format) === 0) {
+        return [];
+    }
+    $pidsStr = implode(' ', $pids);
+    $fmtStr = implode(',', $format);
+    $cmd = 'ps -o pid,' . $fmtStr . ' ' . $pidsStr;
+    exec($cmd, $output);
+    array_shift($output);
+    $processes = [];
+    foreach ($output as $row) {
+        $fields = explode(' ', preg_replace('/\s+/', ' ', trim($row)));
+        $pid = array_shift($fields);
+        for ($i = 0; $i < count($format); $i++) {
+            $processes[$pid][$format[$i]] = $fields[$i];
+        }
+    }
+    return $processes;
+}
