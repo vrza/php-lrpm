@@ -11,12 +11,13 @@ use PrettyPrint\AnsiSeq;
 
 const EXIT_USAGE = 2;
 const EXIT_NO_CONNECTION = 3;
+const EXIT_INVALID_RESPONSE = 4;
 
 if ($argc < 2) {
     fwrite(STDERR, "Usage: ${argv[0]} <command>" . PHP_EOL);
     exit(EXIT_USAGE);
 }
-$msg = $argv[1];
+$request = $argv[1];
 
 $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
 $client = new UnixSocketStreamClient($file);
@@ -24,28 +25,60 @@ $client = new UnixSocketStreamClient($file);
 if ($client->connect() === false) {
     exitNoConnection();
 }
-if ($client->sendMessage($msg) === false) {
+if ($client->sendMessage($request) === false) {
     exitNoConnection();
 }
 if (($response = $client->receiveMessage()) === false) {
     exitNoConnection();
 }
+$client->disconnect();
 
-if ($msg === 'status') {
-    fwrite(STDOUT, renderStatusTable($response));
-} else {
+handleResponse($request, $response);
+
+function exitNoConnection(): void
+{
+    fwrite(STDERR, 'lrpm is not running' . PHP_EOL);
+    exit(EXIT_NO_CONNECTION);
+}
+
+function handleResponse(string $msg, string $response): void
+{
+    if ($msg === 'status') {
+        statusResponseHandler($response);
+    } else {
+        genericResponseHandler($response);
+    }
+}
+
+function genericResponseHandler(string $response): void
+{
     fwrite(STDOUT, $response . PHP_EOL);
 }
 
-$client->disconnect();
-
-function renderStatusTable($jsonStatus): ?Table
+function statusResponseHandler(string $response): void
 {
-    $status = json_decode($jsonStatus, true);
+    $status = json_decode($response, true);
     if (!is_array($status)) {
-        fwrite(STDERR, "Invalid response from lrpm daemon: $jsonStatus" . PHP_EOL);
-        return null;
+        fwrite(STDERR, "Invalid response from lrpm daemon: $response" . PHP_EOL);
+        exit(EXIT_INVALID_RESPONSE);
     }
+    $ps = ps(pidsFromStatus($status), ['rss']);
+    fwrite(STDOUT, renderStatusTable($status, $ps));
+}
+
+function pidsFromStatus($status): array
+{
+    $pids = [];
+    foreach ($status as $_id => $metadata) {
+        if (isset($metadata['state']) && isset($metadata['state']['pid']) && $metadata['state']['pid'] !== null) {
+            $pids[] = $metadata['state']['pid'];
+        }
+    }
+    return $pids;
+}
+
+function renderStatusTable(iterable $status, iterable $ps): Table
+{
     $header = [
         AnsiSeq::addIfTty('BOLD') . 'ID'     . AnsiSeq::addIfTty('RESET'),
         AnsiSeq::addIfTty('BOLD') . 'PID'    . AnsiSeq::addIfTty('RESET'),
@@ -58,14 +91,6 @@ function renderStatusTable($jsonStatus): ?Table
     $output = [$header];
     $redNone = AnsiSeq::addIfTty('RED') . 'none' . AnsiSeq::addIfTty('RESET');
     $redNotAvailable = AnsiSeq::addIfTty('RED') . 'n/a' . AnsiSeq::addIfTty('RESET');
-
-    $pids = [];
-    foreach ($status as $id => $metadata) {
-        if (isset($metadata['state']) && isset($metadata['state']['pid']) && $metadata['state']['pid'] !== null) {
-            $pids[] = $metadata['state']['pid'];
-        }
-    }
-    $ps = ps($pids, ['rss']);
 
     foreach ($status as $id => $metadata) {
         $config = $metadata['config'];
@@ -90,13 +115,7 @@ function renderStatusTable($jsonStatus): ?Table
     return (new Table($output))->setAlignment($align);
 }
 
-function exitNoConnection()
-{
-    fwrite(STDERR, 'lrpm is not running' . PHP_EOL);
-    exit(EXIT_NO_CONNECTION);
-}
-
-function ps(iterable $pids = [], iterable $format): array
+function ps(iterable $pids = [], iterable $format = []): array
 {
     if (count($pids) === 0 || count($format) === 0) {
         return [];
