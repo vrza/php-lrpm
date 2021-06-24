@@ -120,9 +120,9 @@ function ps(iterable $pids, iterable $format): array
     if (count($pids) === 0 || count($format) === 0) {
         return [];
     }
-    $pidsStr = implode(' ', $pids);
-    $fmtStr = implode(',', $format);
-    $cmd = 'ps -o pid,' . $fmtStr . ' ' . $pidsStr;
+    $pidSsv = implode(' ', $pids);
+    $fmtCsv = implode(',', $format);
+    $cmd = "ps -o pid,$fmtCsv $pidSsv";
     exec($cmd, $output);
     array_shift($output);
     $processes = [];
