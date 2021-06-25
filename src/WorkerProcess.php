@@ -12,24 +12,27 @@ class WorkerProcess {
     private $ppid = -1;
     private $shutdown = false;
 
-    public function __construct(Worker $worker) {
+    public function __construct(Worker $worker)
+    {
         $this->worker = $worker;
-        pcntl_signal(SIGTERM,  function ($signal) {
+        pcntl_signal(SIGTERM,  function (int $signo, $_siginfo) {
             fwrite(STDOUT, "==> Caught SIGTERM" . PHP_EOL);
-            $this->shutdown_signal_handler($signal);
+            $this->shutdown_signal_handler($signo);
         });
-        pcntl_signal(SIGINT,  function ($signal) {
+        pcntl_signal(SIGINT,  function (int $signo, $_siginfo) {
             fwrite(STDOUT, "==> Caught SIGINT" . PHP_EOL);
-            $this->shutdown_signal_handler($signal);
+            $this->shutdown_signal_handler($signo);
         });
     }
 
-    private function shutdown_signal_handler($signal) {
-        fwrite(STDOUT, "==> Shutdown signal handler " . $signal . PHP_EOL);
+    private function shutdown_signal_handler(int $signo): void
+    {
+        fwrite(STDOUT, "==> Shutdown signal handler " . $signo . PHP_EOL);
         $this->shutdown = true;
     }
 
-    private function checkParent() {
+    private function checkParent(): void
+    {
         $ppid = posix_getppid();
         if ($ppid != $this->ppid) {
             fwrite(STDERR, "--> Parent PID changed, exiting" . PHP_EOL);
@@ -37,15 +40,18 @@ class WorkerProcess {
         }
     }
 
-    private function testCycle($arg) {
+    private function testCycle($arg): void
+    {
         fwrite(STDOUT, "Worker {$arg['name']} tick" . PHP_EOL);
     }
 
-    public function shutdown() {
+    public function shutdown(): void
+    {
         $this->shutdown = true;
     }
 
-    public function work($arg) {
+    public function work($arg): void
+    {
         $this->ppid = posix_getppid();
         $this->worker->start();
         while (true) { // worker loop

@@ -6,12 +6,12 @@ use PHPLRPM\Worker;
 
 class MockWorker implements Worker
 {
-    public function start()
+    public function start(): void
     {
         fwrite(STDOUT, "MockWorker initialized" . PHP_EOL);
     }
 
-    public function cycle()
+    public function cycle(): void
     {
         fwrite(STDOUT, "MockWorker cycle" . PHP_EOL);
     }

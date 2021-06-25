@@ -9,7 +9,7 @@ use TIPC\UnixSocketStreamServer;
 
 class ProcessManager implements MessageHandler
 {
-    const EXIT_SUCCESS = 0;
+    private const EXIT_SUCCESS = 0;
 
     private $workersMetadata;
     private $timeOfLastConfigPoll = 0;
@@ -25,9 +25,9 @@ class ProcessManager implements MessageHandler
     {
         $this->configurationSource = $configurationSource;
         $this->workersMetadata = new WorkerMetadata();
-        pcntl_signal(SIGCHLD, function ($signal) {
+        pcntl_signal(SIGCHLD, function (int $signo, $_siginfo) {
             fwrite(STDOUT, "==> Caught SIGCHLD" . PHP_EOL);
-            $this->sigchld_handler($signal);
+            $this->sigchld_handler($signo);
         });
 
         $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
@@ -50,25 +50,28 @@ class ProcessManager implements MessageHandler
         }
     }
 
-    private function sigchld_handler($signal) {
-        fwrite(STDOUT, "=> SIGCHLD handler " . $signal . PHP_EOL);
+    private function sigchld_handler(int $signo): void
+    {
+        fwrite(STDOUT, "=> SIGCHLD handler " . $signo . PHP_EOL);
         $this->reapAndRespawn();
     }
 
-    private function startProcesses($jobs) {
+    private function startProcesses($jobs): void
+    {
         fwrite(STDOUT, '==> Need to start ' . count($jobs) . ' processes' . PHP_EOL);
         foreach ($jobs as $id) {
             $this->startProcess($id);
         }
     }
 
-    private function startProcess($id) {
+    private function startProcess($id): void
+    {
         $job = $this->workersMetadata->getById($id);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
             fwrite(STDOUT, '--> A child is born' . PHP_EOL);
             $workerClassName = $job['config']['workerClass'];
-            $worker = new $workerClassName;
+            $worker = new $workerClassName();
             $workerProcess = new WorkerProcess($worker);
             $workerProcess->work($job['config']);
             fwrite(STDOUT, '--> Child exiting' . PHP_EOL);
@@ -81,14 +84,16 @@ class ProcessManager implements MessageHandler
         }
     }
 
-    private function stopProcesses($jobs) {
+    private function stopProcesses($jobs): void
+    {
         fwrite(STDOUT, '==> Need to stop ' . count($jobs) . ' processes' . PHP_EOL);
         foreach ($jobs as $id) {
             $this->stopProcess($id);
         }
     }
 
-    private function stopProcess($id) {
+    private function stopProcess($id): void
+    {
         $job = $this->workersMetadata->getById($id);
         if (empty($job['state']['pid'])) {
             fwrite(STDERR, 'Cannot stop job ' . $id . ', it is not running' . PHP_EOL);
@@ -97,7 +102,8 @@ class ProcessManager implements MessageHandler
         posix_kill($job['state']['pid'],SIGTERM);
     }
 
-    private function reapAndRespawn() {
+    private function reapAndRespawn(): void
+    {
         $reapResults = ProcessUtilities::reapAnyChildren();
         $pids = array_keys($reapResults);
         $exited = $this->workersMetadata->scheduleRestartsByPIDs($pids);
@@ -106,7 +112,7 @@ class ProcessManager implements MessageHandler
         var_dump($this->workersMetadata->getAll());
         fwrite(STDOUT, '================================================================' . PHP_EOL);
         flush();
-        $jobsToRespawn = array_filter($exited, function ($id) { return $this->workersMetadata->has($id); });
+        $jobsToRespawn = array_filter($exited, function ($id): bool { return $this->workersMetadata->has($id); });
         fwrite(STDOUT, "==> Respawning jobs:" . PHP_EOL);
         var_dump($jobsToRespawn);
         //$this->startProcesses($jobsToRespawn);
@@ -115,7 +121,8 @@ class ProcessManager implements MessageHandler
         }
     }
 
-    private function pollDbForConfigChanges() {
+    private function pollDbForConfigChanges(): void
+    {
         if ($this->timeOfLastConfigPoll + $this->secondsBetweenConfigPolls <= time()) {
             $this->timeOfLastConfigPoll = time(); // TODO wait a full cycle even when db is not reachable
             try {
@@ -149,7 +156,8 @@ class ProcessManager implements MessageHandler
         }
     }
 
-    public function run() {
+    public function run(): void
+    {
         $this->messageServer->listen();
         // process manager main loop
         while ($this->shouldRun) {

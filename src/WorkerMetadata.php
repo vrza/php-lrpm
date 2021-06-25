@@ -36,24 +36,29 @@ class WorkerMetadata {
     public $stop = [];
     public $restart = [];
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->metadata = new ArrayWithSecondaryKeys();
         $this->metadata->createIndex(self::PID_KEY);
     }
 
-    public function getAll(): array {
+    public function getAll(): array
+    {
         return $this->metadata->asArray();
     }
 
-    public function has(int $id): bool {
+    public function has($id): bool
+    {
         return $this->metadata->containsPrimaryKey($id);
     }
 
-    public function getById(int $id): array {
+    public function getById($id): array
+    {
         return $this->metadata->get($id);
     }
 
-    public function getJobsById(array $ids): array {
+    public function getJobsById(iterable $ids): array
+    {
         $result = [];
         foreach ($ids as $id) {
             if ($this->has($id)) {
@@ -63,36 +68,43 @@ class WorkerMetadata {
         return $result;
     }
 
-    public function getJobByPid(int $pid): array {
+    public function getJobByPid(int $pid): array
+    {
         if (empty($pid) || !is_int($pid) || $pid < 1) {
             throw new InvalidArgumentException("PID must be a positive integer");
         }
         return $this->metadata->getByIndex(self::PID_KEY, $pid);
     }
 
-    public function removePid(int $pid): int {
+    public function removePid(int $pid): int
+    {
         return $this->metadata->updateSecondaryKey(self::PID_KEY, $pid, null);
     }
 
-    public function removePids(array $pids): array {
+    public function removePids(array $pids): array
+    {
         return array_map(function ($pid) { return $this->removePid($pid); }, $pids);
     }
 
-    public function scheduleRestartsByPIDs(array $pids): array {
+    public function scheduleRestartsByPIDs(array $pids): array
+    {
         return array_map(function ($pid) { return $this->scheduleRestartByPID($pid); }, $pids);
     }
 
-    public function scheduleRestartByPID(int $pid): int {
+    public function scheduleRestartByPID(int $pid): int
+    {
         $id = $this->metadata->getPrimaryKeyByIndex(self::PID_KEY, $pid);
         $this->scheduleRestart($id);
         return $this->removePid($pid);
     }
 
-    public function scheduleRestarts(array $ids): array {
+    public function scheduleRestarts(array $ids): array
+    {
         return array_map(function ($id) { return $this->scheduleRestart($id); }, $ids);
     }
 
-    public function scheduleRestart(int $id): int {
+    public function scheduleRestart($id)
+    {
         if (!$this->has($id)) {
             fwrite(STDERR, "Will not restart job $id, it does not exist" . PHP_EOL);
             return $id;
@@ -118,7 +130,8 @@ class WorkerMetadata {
         return $id;
     }
 
-    public function updateStartedJob(int $id, int $pid): int {
+    public function updateStartedJob($id, int $pid)
+    {
         if (!$this->has($id)) {
             throw new InvalidArgumentException("Cannot update started job, id $id does not exist" . PHP_EOL);
         }
@@ -129,22 +142,26 @@ class WorkerMetadata {
         return $id;
     }
 
-    public function getAllPids(): array {
+    public function getAllPids(): array
+    {
         return $this->metadata->secondaryKeys(self::PID_KEY);
     }
 
-    public function setDbState(int $id, int $dbState) {
+    public function setDbState($id, int $dbState): void
+    {
         if (!$this->has($id)) {
             throw new InvalidArgumentException("Cannot update job with id $id to configuration state $dbState, id does not exist" . PHP_EOL);
         }
         $this->metadata->put("$id.state.dbState", $dbState);
     }
 
-    public function markAsUnchanged(int $id) {
+    public function markAsUnchanged($id)
+    {
         $this->setDbState($id, WorkerMetadata::UNCHANGED);
     }
 
-    public function updateJob(int $id, array $config): int {
+    public function updateJob($id, array $config): int
+    {
         if (!$this->has($id)) {
             throw new InvalidArgumentException("Cannot update job with id $id, id does not exist" . PHP_EOL);
         }
@@ -159,7 +176,8 @@ class WorkerMetadata {
         return $id;
     }
 
-    public function addNewJob(int $id, array $config): int {
+    public function addNewJob($id, array $config): int
+    {
         fwrite(STDOUT, "Adding new job $id" . PHP_EOL);
         fwrite(STDOUT, "Resetting backoff for job $id" . PHP_EOL);
         $metadata = $this->has($id) ? $this->metadata->get($id) : [];
@@ -170,7 +188,8 @@ class WorkerMetadata {
         return $id;
     }
 
-    public function removeJob(int $id) {
+    public function removeJob($id): void
+    {
         if (!$this->has($id)) {
             throw new InvalidArgumentException("Cannot remove job with id $id, id does not exist" . PHP_EOL);
         }
@@ -179,7 +198,8 @@ class WorkerMetadata {
         }
     }
 
-    public function purgeRemovedJobs() {
+    public function purgeRemovedJobs(): void
+    {
         foreach ($this->metadata as $id => $metadata) {
             if ($metadata['state']['dbState'] == self::REMOVED) {
                 if (!empty($metadata['state']['pid'])) {
@@ -192,7 +212,8 @@ class WorkerMetadata {
         }
     }
 
-    public function updateStateSyncMap() {
+    public function updateStateSyncMap(): void
+    {
         foreach ($this->metadata as $id => $job) {
             fwrite(STDOUT, "State sync map checking job $id" . PHP_EOL); flush();
 
