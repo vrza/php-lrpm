@@ -57,19 +57,41 @@ function genericResponseHandler(string $response): void
 
 function statusResponseHandler(string $response): void
 {
-    $status = json_decode($response, true);
-    if (!is_array($status)) {
-        fwrite(STDERR, "Invalid response from lrpm daemon: $response" . PHP_EOL);
+    try {
+        $status = parseStatus($response);
+    } catch (Exception $e) {
+        fwrite(STDERR, "Invalid response from lrpm daemon ({$e->getMessage()}): $response" . PHP_EOL);
         exit(EXIT_INVALID_RESPONSE);
     }
     $ps = ps(pidsFromStatus($status), ['rss']);
     fwrite(STDOUT, renderStatusTable($status, $ps));
 }
 
+function parseStatus(string $jsonStatus): array
+{
+    $status = json_decode($jsonStatus, true);
+    if (!is_array($status)) {
+        throw new Exception('cannot parse as JSON');
+    }
+    foreach ($status as $metadata) {
+        if (
+            !array_key_exists('config', $metadata) ||
+            !is_array($metadata['config']) ||
+            !array_key_exists('name', $metadata['config']) ||
+            !array_key_exists('state', $metadata) ||
+            !is_array($metadata['state']) ||
+            !array_key_exists('startedAt', $metadata['state'])
+        ) {
+            throw new Exception('missing fields');
+        }
+    }
+    return $status;
+}
+
 function pidsFromStatus($status): array
 {
     $pids = [];
-    foreach ($status as $_id => $metadata) {
+    foreach ($status as $metadata) {
         if (isset($metadata['state']) && isset($metadata['state']['pid']) && $metadata['state']['pid'] !== null) {
             $pids[] = $metadata['state']['pid'];
         }
