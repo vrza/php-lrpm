@@ -92,7 +92,7 @@ function pidsFromStatus($status): array
 {
     $pids = [];
     foreach ($status as $metadata) {
-        if (isset($metadata['state']) && isset($metadata['state']['pid']) && $metadata['state']['pid'] !== null) {
+        if (isset($metadata['state']['pid']) && $metadata['state']['pid'] !== null) {
             $pids[] = $metadata['state']['pid'];
         }
     }
