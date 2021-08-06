@@ -1,6 +1,7 @@
 #!/usr/bin/env php
 <?php
 
+declare(strict_types=1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/vendor/autoload.php';
@@ -21,7 +22,6 @@ $request = $argv[1];
 
 $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
 $client = new UnixSocketStreamClient($file);
-
 if ($client->connect() === false) {
     exitNoConnection();
 }
@@ -34,6 +34,7 @@ if (($response = $client->receiveMessage()) === false) {
 $client->disconnect();
 
 handleResponse($request, $response);
+
 
 function exitNoConnection(): void
 {
@@ -64,9 +65,16 @@ function statusResponseHandler(string $response): void
         exit(EXIT_INVALID_RESPONSE);
     }
     $ps = ps(pidsFromStatus($status), ['rss']);
-    fwrite(STDOUT, renderStatusTable($status, $ps));
+    fwrite(STDOUT, renderStatusTable($status, $ps)->__toString());
 }
 
+/**
+ * Parses and validates the LRPM status response
+ *
+ * @param string @jsonStatus
+ * @return array
+ * @throws Exception
+ */
 function parseStatus(string $jsonStatus): array
 {
     $status = json_decode($jsonStatus, true);
