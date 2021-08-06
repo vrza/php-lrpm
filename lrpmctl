@@ -117,7 +117,7 @@ function renderStatusTable(iterable $status, iterable $ps): Table
         AnsiSeq::addIfTty('BOLD') . 'START'  . AnsiSeq::addIfTty('RESET'),
         AnsiSeq::addIfTty('BOLD') . 'NAME'   . AnsiSeq::addIfTty('RESET')
     ];
-    $align = ['r', 'r', 'r', 'r', 'l', 'l'];
+    $align = ['l', 'r', 'r', 'r', 'l', 'l'];
     $output = [$header];
     $redNone = AnsiSeq::addIfTty('RED') . 'none' . AnsiSeq::addIfTty('RESET');
     $redNotAvailable = AnsiSeq::addIfTty('RED') . 'n/a' . AnsiSeq::addIfTty('RESET');
