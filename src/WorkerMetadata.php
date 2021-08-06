@@ -76,7 +76,7 @@ class WorkerMetadata {
         return $this->metadata->getByIndex(self::PID_KEY, $pid);
     }
 
-    public function removePid(int $pid): int
+    public function removePid(int $pid)
     {
         return $this->metadata->updateSecondaryKey(self::PID_KEY, $pid, null);
     }
@@ -91,7 +91,7 @@ class WorkerMetadata {
         return array_map(function ($pid) { return $this->scheduleRestartByPID($pid); }, $pids);
     }
 
-    public function scheduleRestartByPID(int $pid): int
+    public function scheduleRestartByPID(int $pid)
     {
         $id = $this->metadata->getPrimaryKeyByIndex(self::PID_KEY, $pid);
         $this->scheduleRestart($id);
@@ -160,7 +160,7 @@ class WorkerMetadata {
         $this->setDbState($id, WorkerMetadata::UNCHANGED);
     }
 
-    public function updateJob($id, array $config): int
+    public function updateJob($id, array $config)
     {
         if (!$this->has($id)) {
             throw new InvalidArgumentException("Cannot update job with id $id, id does not exist" . PHP_EOL);
@@ -176,7 +176,7 @@ class WorkerMetadata {
         return $id;
     }
 
-    public function addNewJob($id, array $config): int
+    public function addNewJob($id, array $config)
     {
         fwrite(STDOUT, "Adding new job $id" . PHP_EOL);
         fwrite(STDOUT, "Resetting backoff for job $id" . PHP_EOL);
