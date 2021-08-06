@@ -6,7 +6,7 @@ use PHPLRPM\Worker;
 
 class MockWorker implements Worker
 {
-    public function start(): void
+    public function start(array $config): void
     {
         fwrite(STDOUT, "MockWorker initialized" . PHP_EOL);
     }

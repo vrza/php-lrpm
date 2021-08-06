@@ -50,10 +50,10 @@ class WorkerProcess {
         $this->shutdown = true;
     }
 
-    public function work($arg): void
+    public function work($config): void
     {
         $this->ppid = posix_getppid();
-        $this->worker->start();
+        $this->worker->start($config);
         while (true) { // worker loop
             sleep(2);
             //$this->testCycle(); // BREAKME to test zombie reaping
