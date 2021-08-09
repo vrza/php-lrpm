@@ -15,7 +15,7 @@ if ($argc < 2) {
 }
 $request = $argv[1];
 
-probeForAutoloader();
+probeForAutoloader($argv[0]);
 
 use TIPC\UnixSocketStreamClient;
 use PrettyPrint\Table;
@@ -37,11 +37,11 @@ $client->disconnect();
 handleResponse($request, $response);
 
 
-function probeForAutoloader(): void
+function probeForAutoloader($programName): void
 {
     $autoload_locations = [
         __DIR__ . '/vendor/autoload.php',
-        __DIR__ . '/../../vendor/autoload.php'
+        __DIR__ . '/../../autoload.php'
     ];
 
     foreach ($autoload_locations as $autoload_file) {
@@ -51,7 +51,7 @@ function probeForAutoloader(): void
         }
     }
 
-    fwrite(STDERR, $argv[0] . ': could not find autoload.php, use PHP Composer to generate autoloader code' . PHP_EOL);
+    fwrite(STDERR, $programName . ': could not find autoload.php, use PHP Composer to generate autoloader code' . PHP_EOL);
     exit(EXIT_AUTOLOADER_NOT_FOUND);
 }
 
