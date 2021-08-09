@@ -4,13 +4,8 @@
 declare(strict_types=1);
 error_reporting(E_ALL);
 
-require_once __DIR__ . '/vendor/autoload.php';
-
-use TIPC\UnixSocketStreamClient;
-use PrettyPrint\Table;
-use PrettyPrint\AnsiSeq;
-
-const EXIT_USAGE = 2;
+const EXIT_USAGE = 1;
+const EXIT_AUTOLOADER_NOT_FOUND = 2;
 const EXIT_NO_CONNECTION = 3;
 const EXIT_INVALID_RESPONSE = 4;
 
@@ -19,6 +14,12 @@ if ($argc < 2) {
     exit(EXIT_USAGE);
 }
 $request = $argv[1];
+
+probeForAutoloader();
+
+use TIPC\UnixSocketStreamClient;
+use PrettyPrint\Table;
+use PrettyPrint\AnsiSeq;
 
 $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
 $client = new UnixSocketStreamClient($file);
@@ -35,6 +36,24 @@ $client->disconnect();
 
 handleResponse($request, $response);
 
+
+function probeForAutoloader(): void
+{
+    $autoload_locations = [
+        __DIR__ . '/vendor/autoload.php',
+        __DIR__ . '/../../vendor/autoload.php'
+    ];
+
+    foreach ($autoload_locations as $autoload_file) {
+        if (file_exists($autoload_file)) {
+            require_once($autoload_file);
+            return;
+        }
+    }
+
+    fwrite(STDERR, $argv[0] . ': could not find autoload.php, use PHP Composer to generate autoloader code' . PHP_EOL);
+    exit(EXIT_AUTOLOADER_NOT_FOUND);
+}
 
 function exitNoConnection(): void
 {
