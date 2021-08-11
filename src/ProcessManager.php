@@ -52,7 +52,7 @@ class ProcessManager implements MessageHandler
 
     private function sigchld_handler(int $signo): void
     {
-        fwrite(STDOUT, "=> SIGCHLD handler " . $signo . PHP_EOL);
+        fwrite(STDOUT, "==> SIGCHLD handler handling signal " . $signo . PHP_EOL);
         $this->reapAndRespawn();
     }
 
