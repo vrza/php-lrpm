@@ -4,6 +4,7 @@
 declare(strict_types=1);
 error_reporting(E_ALL);
 
+const EXIT_SUCCESS = 0;
 const EXIT_USAGE = 1;
 const EXIT_AUTOLOADER_NOT_FOUND = 2;
 const EXIT_NO_CONNECTION = 3;
@@ -14,6 +15,9 @@ if ($argc < 2) {
     exit(EXIT_USAGE);
 }
 $request = $argv[1];
+if (empty($request)) {
+    exit(EXIT_SUCCESS);
+}
 
 probeForAutoloader($argv[0]);
 
@@ -34,7 +38,7 @@ if (($response = $client->receiveMessage()) === false) {
 }
 $client->disconnect();
 
-handleResponse($request, $response);
+if ($response) handleResponse($request, $response);
 
 
 function probeForAutoloader($programName): void
