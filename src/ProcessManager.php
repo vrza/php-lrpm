@@ -14,7 +14,7 @@ class ProcessManager implements MessageHandler
     private $workersMetadata;
     private $timeOfLastConfigPoll = 0;
     private $secondsBetweenConfigPolls = 10;
-    private $secondsBetweenProcessStatePolls = 2;
+    private $secondsBetweenProcessStatePolls = 1;
 
     private $configurationSource;
 
