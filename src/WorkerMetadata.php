@@ -125,7 +125,7 @@ class WorkerMetadata {
             $job['state']['restartAt'] = $now;
             $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
         }
-        fwrite(STDOUT, "Job $id scheduled to restart at " . $job['state']['restartAt'] . PHP_EOL);
+        fwrite(STDOUT, date('c', time()) . " Job $id scheduled to restart at " . date('c', $job['state']['restartAt']) . PHP_EOL);
         $this->metadata->put($id, $job);
         return $id;
     }
@@ -222,35 +222,36 @@ class WorkerMetadata {
                     // for all UNCHANGED jobs
                     // - check if they need to be restarted:
                     // - if their PID == null AND their restartAt < now(), slate for start
-                    //fwrite(STDOUT, "job $id is UNCHANGED" . PHP_EOL);
+                    //fwrite(STDOUT, "Job $id is UNCHANGED" . PHP_EOL);
                     //var_dump($job['state']);
                     if (empty($job['state']['pid']) && !empty($job['state']['restartAt']) && $job['state']['restartAt'] < time()) {
-                        fwrite(STDOUT, "job $id restart time reached, slating start" . PHP_EOL);
+                        fwrite(STDOUT, date('c', time()) . " Job $id restart time reached, slating start" . PHP_EOL);
+                        $this->start[$id] = $job;
                     }
                     break;
                 case self::REMOVED:
                     //for all REMOVED jobs, slate for shutdown if they have a PID
                     fwrite(STDOUT, "job $id is REMOVED" . PHP_EOL);
                     if (!empty($job['state']['pid'])) {
-                        fwrite(STDOUT, "slating job " . $id . " with pid " . $job['state']['pid'] . " for shutdown" . PHP_EOL);
+                        fwrite(STDOUT, "Slating job " . $id . " with pid " . $job['state']['pid'] . " for shutdown" . PHP_EOL);
                         $this->stop[$id] = $job;
                     }
                     break;
                 case self::ADDED:
                     // for all ADDED jobs, slate for start
-                    fwrite(STDOUT, "job $id is ADDED" . PHP_EOL);
+                    fwrite(STDOUT, "Job $id is ADDED" . PHP_EOL);
                     //var_dump($job['state']);
                     $this->start[$id] = $job;
                     break;
                 case self::UPDATED:
                     // for all UPDATED jobs, slate for restart if job is running, slate for start if not running
-                    fwrite(STDOUT, "job $id is UPDATED" . PHP_EOL);
+                    fwrite(STDOUT, "Job $id is UPDATED" . PHP_EOL);
                     //var_dump($job['state']);
                     if (!empty($job['state']['pid'])) {
-                        fwrite(STDOUT, "slating job " . $id . " with pid " . $job['state']['pid'] . " for restart" . PHP_EOL);
+                        fwrite(STDOUT, "Slating job " . $id . " with pid " . $job['state']['pid'] . " for restart" . PHP_EOL);
                         $this->restart[$id] = $job;
                     } else {
-                        fwrite(STDOUT, "job $id is not running, slating start" . PHP_EOL);
+                        fwrite(STDOUT, "Job $id is not running, slating start" . PHP_EOL);
                         $this->start[$id] = $job;
                     }
                     break;

@@ -91,15 +91,16 @@ class ProcessManager implements MessageHandler
         $reapResults = ProcessUtilities::reapAnyChildren();
         $pids = array_keys($reapResults);
         $exited = $this->workersMetadata->scheduleRestartsByPIDs($pids);
-        fwrite(STDOUT, "==> Exited: " . implode(',', $exited) . PHP_EOL);
+        fwrite(STDOUT, "==> Jobs terminated: " . implode(',', $exited) . PHP_EOL);
         //var_dump($exited);
         //var_dump($this->workersMetadata->getAll());
-        flush();
+        /*
         $jobsToRespawn = array_filter($exited, function ($id): bool { return $this->workersMetadata->has($id); });
         fwrite(STDOUT, "==> Respawning jobs: " . implode(',', $jobsToRespawn) . PHP_EOL);
         foreach ($jobsToRespawn as $id) {
             $this->workersMetadata->start[$id] = $this->workersMetadata->getById($id);
         }
+        */
     }
 
     private function pollDbForConfigChanges(): void
@@ -172,7 +173,6 @@ class ProcessManager implements MessageHandler
 
             $this->messageServer->checkMessages();
 
-            flush();
             sleep($this->secondsBetweenProcessStatePolls);
         }
 
