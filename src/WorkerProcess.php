@@ -8,7 +8,6 @@ class WorkerProcess {
 
     private $worker;
 
-    private $interval = 2;
     private $ppid = -1;
     private $shutdown = false;
 
@@ -55,7 +54,6 @@ class WorkerProcess {
         $this->ppid = posix_getppid();
         $this->worker->start($config);
         while (true) { // worker loop
-            sleep(2);
             //$this->testCycle(); // BREAKME to test zombie reaping
             //$this->cycle($arg);
             // run a cycle of business logic
@@ -66,7 +64,6 @@ class WorkerProcess {
                 fwrite(STDOUT, "--> Shutdown requested, exiting" . PHP_EOL);
                 exit(self::EXIT_SUCCESS);
             }
-            sleep($this->interval);
         }
     }
 }

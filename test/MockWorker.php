@@ -14,5 +14,6 @@ class MockWorker implements Worker
     public function cycle(): void
     {
         fwrite(STDOUT, "MockWorker cycle" . PHP_EOL);
+        sleep(2);
     }
 }
