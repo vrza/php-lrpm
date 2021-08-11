@@ -40,6 +40,7 @@ class ProcessManager implements MessageHandler
         switch ($msg) {
             case 'help':
                 return "lrpm: $help";
+            case 'jsonstatus':
             case 'status':
                 return json_encode($this->workersMetadata->getAll());
             case 'stop':
