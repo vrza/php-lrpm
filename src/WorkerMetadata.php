@@ -26,6 +26,7 @@ class WorkerMetadata {
     const SHORT_RUN_TIME_SECONDS = 5;
 
     const DEFAULT_BACKOFF = 1;
+    const MAX_BACKOFF = 60 * 60 * 6;
     const BACKOFF_MULTIPLIER = 2;
 
     const PID_KEY = 'state.pid';
@@ -118,6 +119,9 @@ class WorkerMetadata {
         if ($now < $job['state']['startedAt'] + self::SHORT_RUN_TIME_SECONDS) {
             $job['state']['restartAt'] = $now + $job['state']['backoffInterval'];
             $job['state']['backoffInterval'] *= self::BACKOFF_MULTIPLIER;
+            if ($job['state']['backoffInterval'] > self::MAX_BACKOFF) {
+                $job['state']['backoffInterval'] = self::MAX_BACKOFF;
+            }
             fwrite(STDOUT, "Job $id run time was too short, backing off for seconds: " . $job['state']['backoffInterval'] . PHP_EOL);
             var_dump($job['state']);
         } else {
