@@ -223,7 +223,7 @@ class WorkerMetadata {
                     // - check if they need to be restarted:
                     // - if their PID == null AND their restartAt < now(), slate for start
                     fwrite(STDOUT, "job $id is UNCHANGED" . PHP_EOL);
-                    var_dump($job['state']);
+                    //var_dump($job['state']);
                     if (empty($job['state']['pid']) && !empty($job['state']['restartAt']) && $job['state']['restartAt'] < time()) {
                         fwrite(STDOUT, "job restart time reached, slating start" . PHP_EOL);
                     }
@@ -239,13 +239,13 @@ class WorkerMetadata {
                 case self::ADDED:
                     // for all ADDED jobs, slate for start
                     fwrite(STDOUT, "job $id is ADDED" . PHP_EOL);
-                    var_dump($job['state']);
+                    //var_dump($job['state']);
                     $this->start[$id] = $job;
                     break;
                 case self::UPDATED:
                     // for all UPDATED jobs, slate for restart if job is running, slate for start if not running
                     fwrite(STDOUT, "job $id is UPDATED" . PHP_EOL);
-                    var_dump($job['state']);
+                    //var_dump($job['state']);
                     if (!empty($job['state']['pid'])) {
                         fwrite(STDOUT, "slating pid " . $job['state']['pid'] . " for restart" . PHP_EOL);
                         $this->restart[$id] = $job;

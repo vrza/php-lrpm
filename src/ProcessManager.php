@@ -56,39 +56,23 @@ class ProcessManager implements MessageHandler
         $this->reapAndRespawn();
     }
 
-    private function startProcesses($jobs): void
-    {
-        fwrite(STDOUT, '==> Need to start ' . count($jobs) . ' processes' . PHP_EOL);
-        foreach ($jobs as $id) {
-            $this->startProcess($id);
-        }
-    }
-
     private function startProcess($id): void
     {
         $job = $this->workersMetadata->getById($id);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
-            fwrite(STDOUT, '--> A child is born' . PHP_EOL);
+            fwrite(STDOUT, '--> Child process starting' . PHP_EOL);
             $workerClassName = $job['config']['workerClass'];
             $worker = new $workerClassName();
             $workerProcess = new WorkerProcess($worker);
             $workerProcess->work($job['config']);
-            fwrite(STDOUT, '--> Child exiting' . PHP_EOL);
+            fwrite(STDOUT, '--> Child process exiting' . PHP_EOL);
             exit(self::EXIT_SUCCESS);
         } elseif ($pid > 0) { // parent process
             fwrite(STDOUT, '==> Forked a child with PID ' . $pid . PHP_EOL);
             $this->workersMetadata->updateStartedJob($id, $pid);
         } else {
             fwrite(STDERR, '==> Error forking child process: ' . $pid . PHP_EOL);
-        }
-    }
-
-    private function stopProcesses($jobs): void
-    {
-        fwrite(STDOUT, '==> Need to stop ' . count($jobs) . ' processes' . PHP_EOL);
-        foreach ($jobs as $id) {
-            $this->stopProcess($id);
         }
     }
 
@@ -107,15 +91,12 @@ class ProcessManager implements MessageHandler
         $reapResults = ProcessUtilities::reapAnyChildren();
         $pids = array_keys($reapResults);
         $exited = $this->workersMetadata->scheduleRestartsByPIDs($pids);
-        fwrite(STDOUT, "Exited:" . PHP_EOL);
-        var_dump($exited);
-        var_dump($this->workersMetadata->getAll());
-        fwrite(STDOUT, '================================================================' . PHP_EOL);
+        fwrite(STDOUT, "==> Exited: " . implode(',', $exited) . PHP_EOL);
+        //var_dump($exited);
+        //var_dump($this->workersMetadata->getAll());
         flush();
         $jobsToRespawn = array_filter($exited, function ($id): bool { return $this->workersMetadata->has($id); });
-        fwrite(STDOUT, "==> Respawning jobs:" . PHP_EOL);
-        var_dump($jobsToRespawn);
-        //$this->startProcesses($jobsToRespawn);
+        fwrite(STDOUT, "==> Respawning jobs: " . implode(',', $jobsToRespawn) . PHP_EOL);
         foreach ($jobsToRespawn as $id) {
             $this->workersMetadata->start[$id] = $this->workersMetadata->getById($id);
         }
@@ -127,8 +108,8 @@ class ProcessManager implements MessageHandler
             $this->timeOfLastConfigPoll = time(); // TODO wait a full cycle even when db is not reachable
             try {
                 $newWorkers = $this->configurationSource->loadConfiguration();
-                fwrite(STDOUT, "==> Loaded fresh configuration:" . PHP_EOL);
-                var_dump($newWorkers);
+                //fwrite(STDOUT, "==> Loaded fresh configuration:" . PHP_EOL);
+                //var_dump($newWorkers);
                 $this->workersMetadata->purgeRemovedJobs();
                 foreach ($newWorkers as $jobId => $newJobConfig) {
                     if ($this->workersMetadata->has($jobId)) {
@@ -147,8 +128,8 @@ class ProcessManager implements MessageHandler
                         $this->workersMetadata->removeJob($id);
                     }
                 }
-                fwrite(STDOUT, "==> Internal state after diff:" . PHP_EOL);
-                var_dump($this->workersMetadata->getAll());
+                //fwrite(STDOUT, "==> Internal state after diff:" . PHP_EOL);
+                //var_dump($this->workersMetadata->getAll());
                 $this->workersMetadata->updateStateSyncMap();
             } catch (Exception $e) {
                 fwrite(STDERR, "Error getting jobs configuration" . PHP_EOL);
@@ -162,17 +143,23 @@ class ProcessManager implements MessageHandler
         // process manager main loop
         while ($this->shouldRun) {
             $this->pollDbForConfigChanges();
-            fwrite(STDOUT, '==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
+            if (count($this->workersMetadata->restart) > 0) {
+                fwrite(STDOUT,'==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
+            }
             foreach ($this->workersMetadata->restart as $id => $job) {
                 $this->stopProcess($id);
                 unset($this->workersMetadata->restart[$id]);
             }
-            fwrite(STDOUT, '==> Need to stop ' . count($this->workersMetadata->stop) . ' processes' . PHP_EOL);
+            if (count($this->workersMetadata->stop) > 0) {
+                fwrite(STDOUT, '==> Need to stop ' . count($this->workersMetadata->stop) . ' processes' . PHP_EOL);
+            }
             foreach ($this->workersMetadata->stop as $id => $job) {
                 $this->stopProcess($id);
                 unset($this->workersMetadata->stop[$id]);
             }
-            fwrite(STDOUT, '==> Need to start ' . count($this->workersMetadata->start) . ' processes' . PHP_EOL);
+            if (count($this->workersMetadata->start) > 0) {
+                fwrite(STDOUT, '==> Need to start ' . count($this->workersMetadata->start) . ' processes' . PHP_EOL);
+            }
             foreach ($this->workersMetadata->start as $id => $job) {
                 $this->startProcess($id);
                 unset($this->workersMetadata->start[$id]);
