@@ -158,6 +158,9 @@ function renderStatusTable(iterable $status, iterable $ps): Table
         } else {
             $pidFmt = $redNone;
             $rssFmt = $uptimeFmt = $startedAtFmt = $redNotAvailable;
+            if (isset($state['restartAt']) && is_int($state['restartAt']) && $state['restartAt'] > 0) {
+                $startedAtFmt = date('Y-m-d H:i:s', $state['restartAt']);
+            }
         }
         $output[] = [$id, $pidFmt, $rssFmt, $uptimeFmt, $startedAtFmt, $name];
     }
