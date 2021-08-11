@@ -134,6 +134,21 @@ class WorkerMetadata {
         return $id;
     }
 
+    public function scheduleImmediateRestart($id): string
+    {
+        if (!$this->has($id)) {
+            return("Will not restart job $id, it does not exist");
+        }
+        if ($this->metadata->get("$id.state.dbState") == self::REMOVED) {
+            return("Will not restart job $id, it was removed");
+        }
+        $job = $this->metadata->get($id);
+        $job['state']['restartAt'] = time();
+        $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
+        $this->metadata->put($id, $job);
+        return("Scheduled immediate restart of job $id");
+    }
+
     public function updateStartedJob($id, int $pid)
     {
         if (!$this->has($id)) {

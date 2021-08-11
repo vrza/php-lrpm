@@ -14,7 +14,7 @@ if ($argc < 2) {
     fwrite(STDERR, "Usage: ${argv[0]} <command>" . PHP_EOL);
     exit(EXIT_USAGE);
 }
-$request = $argv[1];
+$request = implode(' ', array_slice($argv, 1));
 if (empty($request)) {
     exit(EXIT_SUCCESS);
 }

@@ -36,8 +36,9 @@ class ProcessManager implements MessageHandler
 
     public function handleMessage(string $msg): string
     {
-        $help = 'Valid commands: help, status, stop';
-        switch ($msg) {
+        $help = 'Valid commands: help, status, stop, restart job_id';
+        $args = explode(' ', $msg);
+        switch ($args[0]) {
             case 'help':
                 return "lrpm: $help";
             case 'jsonstatus':
@@ -46,6 +47,10 @@ class ProcessManager implements MessageHandler
             case 'stop':
                 $this->shouldRun = false;
                 return 'lrpm: Shutting down process manager';
+            case 'restart':
+                return isset($args[1])
+                    ?  $this->workersMetadata->scheduleImmediateRestart($args[1])
+                    : 'lrpm: restart requires a job id argument';
             default:
                 return "lrpm: '$msg' is not a valid command. $help";
         }
