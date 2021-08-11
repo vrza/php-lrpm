@@ -39,16 +39,6 @@ class WorkerProcess {
         }
     }
 
-    private function testCycle($arg): void
-    {
-        fwrite(STDOUT, "Worker {$arg['name']} tick" . PHP_EOL);
-    }
-
-    public function shutdown(): void
-    {
-        $this->shutdown = true;
-    }
-
     public function work($config): void
     {
         $this->ppid = posix_getppid();
