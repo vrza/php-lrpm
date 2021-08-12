@@ -139,7 +139,7 @@ class ProcessManager implements MessageHandler
                         $this->workersMetadata->addNewJob($jobId, $newJobConfig);
                     }
                 }
-                foreach ($this->workersMetadata->getAll() as $id => $job) {
+                foreach ($this->workersMetadata->getAll() as $id => $_job) {
                     if (!array_key_exists($id, $newWorkers)) {
                         $this->workersMetadata->removeJob($id);
                     }
@@ -162,21 +162,21 @@ class ProcessManager implements MessageHandler
             if (count($this->workersMetadata->restart) > 0) {
                 fwrite(STDOUT,'==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
             }
-            foreach ($this->workersMetadata->restart as $id => $job) {
+            foreach ($this->workersMetadata->restart as $id => $_job) {
                 $this->stopProcess($id);
                 unset($this->workersMetadata->restart[$id]);
             }
             if (count($this->workersMetadata->stop) > 0) {
                 fwrite(STDOUT, '==> Need to stop ' . count($this->workersMetadata->stop) . ' processes' . PHP_EOL);
             }
-            foreach ($this->workersMetadata->stop as $id => $job) {
+            foreach ($this->workersMetadata->stop as $id => $_job) {
                 $this->stopProcess($id);
                 unset($this->workersMetadata->stop[$id]);
             }
             if (count($this->workersMetadata->start) > 0) {
                 fwrite(STDOUT, '==> Need to start ' . count($this->workersMetadata->start) . ' processes' . PHP_EOL);
             }
-            foreach ($this->workersMetadata->start as $id => $job) {
+            foreach ($this->workersMetadata->start as $id => $_job) {
                 $this->startProcess($id);
                 unset($this->workersMetadata->start[$id]);
             }
