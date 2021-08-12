@@ -49,7 +49,7 @@ class ProcessManager implements MessageHandler
                 return 'lrpm: Shutting down process manager';
             case 'restart':
                 return isset($args[1])
-                    ?  $this->workersMetadata->scheduleImmediateRestart($args[1])
+                    ? $this->restartProcess($args[1])
                     : 'lrpm: restart requires a job id argument';
             default:
                 return "lrpm: '$msg' is not a valid command. $help";
@@ -82,14 +82,23 @@ class ProcessManager implements MessageHandler
         }
     }
 
-    private function stopProcess($id): void
+    private function stopProcess($id): bool
     {
         $job = $this->workersMetadata->getById($id);
         if (empty($job['state']['pid'])) {
             fwrite(STDERR, 'Cannot stop job ' . $id . ', it is not running' . PHP_EOL);
-            return;
+            return false;
         }
-        posix_kill($job['state']['pid'],SIGTERM);
+        return posix_kill($job['state']['pid'], SIGTERM);
+    }
+
+    private function restartProcess($id): string
+    {
+        $job = $this->workersMetadata->getById($id);
+        if (!empty($job['state']['pid'])) {
+            posix_kill($job['state']['pid'], SIGTERM);
+        }
+        return $this->workersMetadata->scheduleImmediateRestart($id);
     }
 
     private function reapAndRespawn(): void
