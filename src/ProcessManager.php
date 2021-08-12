@@ -153,23 +153,23 @@ class ProcessManager implements MessageHandler
             if (count($this->workersMetadata->restart) > 0) {
                 fwrite(STDOUT,'==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
             }
-            foreach ($this->workersMetadata->restart as $id => $_job) {
+            foreach ($this->workersMetadata->restart as $id) {
                 $this->stopProcess($id);
-                unset($this->workersMetadata->restart[$id]);
+                $this->workersMetadata->restart->remove($id);
             }
             if (count($this->workersMetadata->stop) > 0) {
                 fwrite(STDOUT, '==> Need to stop ' . count($this->workersMetadata->stop) . ' processes' . PHP_EOL);
             }
-            foreach ($this->workersMetadata->stop as $id => $_job) {
+            foreach ($this->workersMetadata->stop as $id) {
                 $this->stopProcess($id);
-                unset($this->workersMetadata->stop[$id]);
+                $this->workersMetadata->stop->remove($id);
             }
             if (count($this->workersMetadata->start) > 0) {
                 fwrite(STDOUT, '==> Need to start ' . count($this->workersMetadata->start) . ' processes' . PHP_EOL);
             }
-            foreach ($this->workersMetadata->start as $id => $_job) {
+            foreach ($this->workersMetadata->start as $id) {
                 $this->startProcess($id);
-                unset($this->workersMetadata->start[$id]);
+                $this->workersMetadata->start->remove($id);
             }
             //fwrite(STDOUT, "Workers metadata before cleanup:" . PHP_EOL);
             //var_dump($this->workersMetadata->getAll());

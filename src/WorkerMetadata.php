@@ -4,6 +4,7 @@ namespace PHPLRPM;
 
 use InvalidArgumentException;
 use CardinalCollections\ArrayWithSecondaryKeys\ArrayWithSecondaryKeys;
+use CardinalCollections\Mutable\Set;
 
 /*
  * (int) => [
@@ -33,14 +34,17 @@ class WorkerMetadata {
 
     private $metadata;
 
-    public $start = [];
-    public $stop = [];
-    public $restart = [];
+    public $start;
+    public $stop;
+    public $restart;
 
     public function __construct()
     {
         $this->metadata = new ArrayWithSecondaryKeys();
         $this->metadata->createIndex(self::PID_KEY);
+        $this->start = new Set();
+        $this->stop = new Set();
+        $this->restart = new Set();
     }
 
     public function getAll(): array
@@ -146,9 +150,9 @@ class WorkerMetadata {
         $job['state']['restartAt'] = time();
         $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
         if (!empty($job['state']['pid'])) {
-            $this->restart[$id] = $job;
+            $this->restart->add($id);
         } else {
-            $this->start[$id] = $job;
+            $this->start->add($id);
         }
         $this->metadata->put($id, $job);
         return("Scheduled immediate restart of job $id");
@@ -250,7 +254,7 @@ class WorkerMetadata {
                     //var_dump($job['state']);
                     if (empty($job['state']['pid']) && !empty($job['state']['restartAt']) && $job['state']['restartAt'] < time()) {
                         fwrite(STDOUT, date('c', time()) . " Job $id restart time reached, slating start" . PHP_EOL);
-                        $this->start[$id] = $job;
+                        $this->start->add($id);
                     }
                     break;
                 case self::REMOVED:
@@ -258,14 +262,14 @@ class WorkerMetadata {
                     fwrite(STDOUT, "job $id is REMOVED" . PHP_EOL);
                     if (!empty($job['state']['pid'])) {
                         fwrite(STDOUT, "Slating job " . $id . " with pid " . $job['state']['pid'] . " for shutdown" . PHP_EOL);
-                        $this->stop[$id] = $job;
+                        $this->stop->add($id);
                     }
                     break;
                 case self::ADDED:
                     // for all ADDED jobs, slate for start
                     fwrite(STDOUT, "Job $id is ADDED" . PHP_EOL);
                     //var_dump($job['state']);
-                    $this->start[$id] = $job;
+                    $this->start->add($id);
                     break;
                 case self::UPDATED:
                     // for all UPDATED jobs, slate for restart if job is running, slate for start if not running
@@ -273,10 +277,10 @@ class WorkerMetadata {
                     //var_dump($job['state']);
                     if (!empty($job['state']['pid'])) {
                         fwrite(STDOUT, "Slating job " . $id . " with pid " . $job['state']['pid'] . " for restart" . PHP_EOL);
-                        $this->restart[$id] = $job;
+                        $this->restart->add($id);
                     } else {
                         fwrite(STDOUT, "Job $id is not running, slating start" . PHP_EOL);
-                        $this->start[$id] = $job;
+                        $this->start->add($id);
                     }
                     break;
                 default:

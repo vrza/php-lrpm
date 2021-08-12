@@ -29,6 +29,7 @@
         "ext-pcntl": "*",
         "ext-posix": "*",
         "vrza/array-with-secondary-keys": "dev-main",
+        "vrza/cardinal-collections": "dev-main",
         "vrza/php-tipc": "dev-main",
         "vrza/php-pretty-print": "dev-main"
     },
