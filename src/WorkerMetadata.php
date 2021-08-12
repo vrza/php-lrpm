@@ -145,6 +145,11 @@ class WorkerMetadata {
         $job = $this->metadata->get($id);
         $job['state']['restartAt'] = time();
         $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
+        if (!empty($job['state']['pid'])) {
+            $this->restart[$id] = $job;
+        } else {
+            $this->start[$id] = $job;
+        }
         $this->metadata->put($id, $job);
         return("Scheduled immediate restart of job $id");
     }
