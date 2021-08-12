@@ -109,7 +109,7 @@ class ProcessManager implements MessageHandler
         */
     }
 
-    private function pollDbForConfigChanges(): void
+    private function pollConfigurationSourceForChanges(): void
     {
         if ($this->timeOfLastConfigPoll + $this->secondsBetweenConfigPolls <= time()) {
             $this->timeOfLastConfigPoll = time(); // TODO wait a full cycle even when db is not reachable
@@ -149,7 +149,7 @@ class ProcessManager implements MessageHandler
         $this->messageServer->listen();
         // process manager main loop
         while ($this->shouldRun) {
-            $this->pollDbForConfigChanges();
+            $this->pollConfigurationSourceForChanges();
             if (count($this->workersMetadata->restart) > 0) {
                 fwrite(STDOUT,'==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
             }
