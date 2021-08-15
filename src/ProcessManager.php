@@ -137,7 +137,7 @@ class ProcessManager implements MessageHandler
                 }
                 //fwrite(STDOUT, "==> Internal state after diff:" . PHP_EOL);
                 //var_dump($this->workersMetadata->getAll());
-                $this->workersMetadata->updateStateSyncMap();
+                $this->workersMetadata->slateJobStateUpdates();
             } catch (Exception $e) {
                 fwrite(STDERR, "Error getting jobs configuration" . PHP_EOL);
             }

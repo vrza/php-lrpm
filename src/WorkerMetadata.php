@@ -240,7 +240,7 @@ class WorkerMetadata {
         }
     }
 
-    public function updateStateSyncMap(): void
+    public function slateJobStateUpdates(): void
     {
         foreach ($this->metadata as $id => $job) {
             //fwrite(STDOUT, "State sync map checking job $id" . PHP_EOL); flush();
