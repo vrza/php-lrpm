@@ -60,4 +60,22 @@ class ConfigurationValidator
     {
         return $this->errors;
     }
+
+    public static function filter(array $configs): array
+    {
+        $filtered = [];
+        foreach ($configs as $jobId => $jobConfig) {
+            $validator = new self($jobConfig);
+            if ($validator->isValid()) {
+                $filtered[] = $jobConfig;
+            } else {
+                fwrite(
+                    STDERR,
+                    "Invalid configuration for job $jobId: " .
+                    json_encode($validator->getErrors()) . PHP_EOL
+                );
+            }
+        }
+        return $filtered;
+    }
 }

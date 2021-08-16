@@ -114,20 +114,10 @@ class ProcessManager implements MessageHandler
         if ($this->timeOfLastConfigPoll + $this->secondsBetweenConfigPolls <= time()) {
             $this->timeOfLastConfigPoll = time(); // TODO wait a full cycle even when db is not reachable
             try {
-                $newWorkers = $this->configurationSource->loadConfiguration();
-                //fwrite(STDOUT, "==> Loaded fresh configuration:" . PHP_EOL);
-                //var_dump($newWorkers);
+                $unvalidatedNewWorkers = $this->configurationSource->loadConfiguration();
+                $newWorkers = ConfigurationValidator::filter($unvalidatedNewWorkers);
                 $this->workersMetadata->purgeRemovedJobs();
                 foreach ($newWorkers as $jobId => $newJobConfig) {
-                    $validator = new ConfigurationValidator($newJobConfig);
-                    if (!$validator->isValid()) {
-                        fwrite(STDERR,
-                               "Invalid configuration for job $jobId: " .
-                               json_encode($validator->getErrors()) . PHP_EOL
-                        );
-                        unset($newWorkers[$jobId]);
-                        continue;
-                    }
                     if ($this->workersMetadata->has($jobId)) {
                         $oldJob = $this->workersMetadata->getById($jobId);
                         if ($newJobConfig['mtime'] > $oldJob['config']['mtime']) {
@@ -144,8 +134,6 @@ class ProcessManager implements MessageHandler
                         $this->workersMetadata->removeJob($id);
                     }
                 }
-                //fwrite(STDOUT, "==> Internal state after diff:" . PHP_EOL);
-                //var_dump($this->workersMetadata->getAll());
                 $this->workersMetadata->slateJobStateUpdates();
             } catch (Exception $e) {
                 fwrite(STDERR, "Error getting jobs configuration" . PHP_EOL);
