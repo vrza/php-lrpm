@@ -48,7 +48,7 @@ class ConfigurationValidator
                 $this->errors[$field]['description'] = $v['description'];
                 continue;
             }
-            if (!$v['valid']) {
+            if (!$v['valid']($this->config[$field])) {
                 $this->errors[$field]['error'] = 'Invalid data';
                 $this->errors[$field]['description'] = $v['description'];
             }
