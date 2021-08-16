@@ -33,14 +33,14 @@ PHP-LRPM uses exponential backoff when attempting to restart a process; some pro
 1. Implement the `ConfigurationSource`. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers (see details below).
 2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the death of the LRPM supervisor process). Backoff should be implemented by the cycle() method -- be carefult not to run a tight loop at times where cycles are not doing actual work!
 
-=== Configuration format
+=== Job configuration example
 
 ```
 $config = [
-    $id => [ // Unique job id (string or int)
-        'name' => 'Job 42', // descriptive name (string)
+    42 => [ // Unique job id (string or int)
+        'name' => 'Job 42', // Descriptive name (string)
         'workerClass' => '\PHPLRPM\Test\MockWorker', // Class implementing the Worker interface (string)
-        'mtime' => 1629121362, // time when this job config was last modified, as UTC UNIX timestamp (int)
+        'mtime' => 1629121362, // Time when this job config was last modified, as UTC UNIX timestamp (int)
         'workerConfig' => [] // Array of additional configuration specific to the Worker implementation (array)
     ]
 ]
