@@ -119,6 +119,12 @@ class ProcessManager implements MessageHandler
                 //var_dump($newWorkers);
                 $this->workersMetadata->purgeRemovedJobs();
                 foreach ($newWorkers as $jobId => $newJobConfig) {
+                    $validator = new ConfigurationValidator($newJobConfig);
+                    if (!$validator->isValid()) {
+                        fwrite(STDERR, "Invalid configuration for job $jobId: ");
+                        fwrite(STDERR, json_encode($validator->getErrors()) . PHP_EOL);
+                        continue;
+                    }
                     if ($this->workersMetadata->has($jobId)) {
                         $oldJob = $this->workersMetadata->getById($jobId);
                         if ($newJobConfig['mtime'] > $oldJob['config']['mtime']) {
