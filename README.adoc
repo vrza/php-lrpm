@@ -60,7 +60,11 @@ See `example.php` for a full running example with more details.
 
 PHP-LRPM keeps metadata in an associative array. For efficient lookups by PID, a separate index is maintained.
 
-This functionality could be offloaded to a generic library that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work).
+This functionality was offloaded to a generic library https://github.com/vrza/array-with-secondary-keys[Array with Secondary Keys], that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work). In turn, building specific collection inspired building https://github.com/vrza/cardinal-collections[Cardinal Collections], a PHP toolkit for building collections.
+
+==== Implement receiving, handling and responding to control messages
+
+Included is the `lrpmctl` tool, which uses the https://github.com/vrza/php-tipc[tipc] library to exchange messages with a running instance of LRPM. Some examples of messages include getting the `status` of running processes (see screenshot above), and requesting a `restart` of a process.
 
 === TODO
 
