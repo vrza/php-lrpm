@@ -125,6 +125,7 @@ class ProcessManager implements MessageHandler
                                "Invalid configuration for job $jobId: " .
                                json_encode($validator->getErrors()) . PHP_EOL
                         );
+                        unset($newWorkers[$jobId]);
                         continue;
                     }
                     if ($this->workersMetadata->has($jobId)) {
