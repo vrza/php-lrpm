@@ -121,8 +121,10 @@ class ProcessManager implements MessageHandler
                 foreach ($newWorkers as $jobId => $newJobConfig) {
                     $validator = new ConfigurationValidator($newJobConfig);
                     if (!$validator->isValid()) {
-                        fwrite(STDERR, "Invalid configuration for job $jobId: ");
-                        fwrite(STDERR, json_encode($validator->getErrors()) . PHP_EOL);
+                        fwrite(STDERR,
+                               "Invalid configuration for job $jobId: " .
+                               json_encode($validator->getErrors()) . PHP_EOL
+                        );
                         continue;
                     }
                     if ($this->workersMetadata->has($jobId)) {
