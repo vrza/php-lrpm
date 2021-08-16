@@ -11,14 +11,6 @@ class ConfigurationValidator
     public function __construct(array $config)
     {
         $this->fields = [
-            /*
-            'id' => [
-                'description' => 'Job ID, must be a string or an integer',
-                'valid' => function($id) {
-                    return is_int($id) || is_string($id);
-                }
-            ],
-            */
             'mtime' => [
                 'description' => 'Time of last modification, must be a UTC UNIX timestamp',
                 'valid' => function($mtime) {
