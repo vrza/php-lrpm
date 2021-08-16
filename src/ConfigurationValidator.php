@@ -12,7 +12,7 @@ class ConfigurationValidator
     {
         $this->fields = [
             'mtime' => [
-                'description' => 'Time of last modification, must be a UTC UNIX timestamp',
+                'description' => 'Time of last modification, must be a UTC Unix timestamp integer',
                 'valid' => function($mtime) {
                     return is_int($mtime) && $mtime >= 0;
                 }

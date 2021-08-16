@@ -40,7 +40,7 @@ $config = [
     42 => [ // Unique job id (string or int)
         'name' => 'Job 42', // Descriptive name (string)
         'workerClass' => '\PHPLRPM\Test\MockWorker', // Class implementing the Worker interface (string)
-        'mtime' => 1629121362, // Time when this job config was last modified, as UTC UNIX timestamp (int)
+        'mtime' => 1629121362, // Time when this job config was last modified, as UTC Unix timestamp (int)
         'workerConfig' => [] // Array of additional configuration specific to the Worker implementation (array)
     ]
 ]
