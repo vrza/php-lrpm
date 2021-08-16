@@ -35,7 +35,9 @@ Currently LRPM is not intended to run as PID 1, nor was it tested in this role.
 1. Implement the `ConfigurationSource`. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers (see details below).
 2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the death of the LRPM supervisor process). Backoff should be implemented by the cycle() method -- be carefult not to run a tight loop at times where cycles are not doing actual work!
 
-=== Job configuration example
+=== Job configuration
+
+Configuration is a simple associative array of jobs to run. Here's an example configuration consisting of a single job, with all the mandatory fields described in comments:
 
 ```
 $config = [
