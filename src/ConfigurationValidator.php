@@ -67,7 +67,7 @@ class ConfigurationValidator
         foreach ($configs as $jobId => $jobConfig) {
             $validator = new self($jobConfig);
             if ($validator->isValid()) {
-                $filtered[] = $jobConfig;
+                $filtered[$jobId] = $jobConfig;
             } else {
                 fwrite(
                     STDERR,
