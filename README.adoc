@@ -8,9 +8,7 @@ image::https://raw.githubusercontent.com/vrza/php-lrpm/main/lrpmctl.png[lrpmctl 
 
 Dynamic management of long running processes. Similar in function to process managers like daemontools or supervisord, but integrates with PHP code.
 
-Can periodically reload configuration, e.g. from a database, and start/stop processes accordingly.
-
-Currently not intended to be running as PID 1, nor was it tested in this role.
+LRPM periodically reloads configuration from a custom source implemented in PHP (e.g. from a database), checks for changes in configuration and start/stop processes accordingly.
 
 This https://youtu.be/MJkFHMOCEkg[talk by Giorgio Sironi] given at the Dutch PHP Conference in 2017 covers some of the problems and challenges when implementing long running PHP processes.
 
@@ -18,7 +16,7 @@ This https://youtu.be/MJkFHMOCEkg[talk by Giorgio Sironi] given at the Dutch PHP
 
 === Simple
 
-PHP-LRPM is built on top of POSIX process management facilities. PHP-LRPM starts its subprocesses via fork/exec and subprocesses don’t daemonize.
+PHP-LRPM is built on top of POSIX process management facilities. PHP-LRPM starts its subprocesses via `fork(2)` and subprocesses don’t daemonize.
 
 === Efficient
 
@@ -28,12 +26,41 @@ The operating system signals PHP-LRPM immediately when a process terminates. PHP
 
 PHP-LRPM uses exponential backoff when attempting to restart a process; some process managers will try several times in quick succession and fail the process until operator intervention.
 
+== Non-goals
+
+Currently LRPM is not intended to run as PID 1, nor was it tested in this role.
+
 == Usage
 
-1. Implement the `ConfigurationSource`. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers.
+1. Implement the `ConfigurationSource`. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers (see details below).
 2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the death of the LRPM supervisor process). Backoff should be implemented by the cycle() method -- be carefult not to run a tight loop at times where cycles are not doing actual work!
 
+=== Job configuration
+
+Configuration is a simple associative array of jobs to run. Here's an example configuration consisting of a single job, with all the mandatory fields described in comments:
+
+```
+$config = [
+    42 => [ // Unique job id (string or int)
+        'name' => 'Job 42', // Descriptive name (string)
+        'workerClass' => '\PHPLRPM\Test\MockWorker', // Class implementing the Worker interface (string)
+        'mtime' => 1629121362, // Time when this job config was last modified, as UTC Unix timestamp (int)
+        'workerConfig' => [] // Array of additional configuration specific to the Worker implementation (array)
+    ]
+]
+```
+
+Class `ConfigurationValidator` is used for config validation internally, and you can also use it to test your `ConfigurationSource` implementation.
+
+If a job's `mtime` returned by the `ConfigurationSource` is newer than `mtime` from previous poll, that job will be restarted with the new configuration.
+
 See `example.php` for a full running example with more details.
+
+== Operating LRPM
+
+It is recommended to run LRPM as a normal system service. Its main process stays in the foreground and logs to stdout and stderr.
+
+Symlink the `lrpmctl` tool to somewhere in your PATH and use it to query the running instance for status, or to restart a process on demand.
 
 == Development roadmap
 
@@ -43,7 +70,11 @@ See `example.php` for a full running example with more details.
 
 PHP-LRPM keeps metadata in an associative array. For efficient lookups by PID, a separate index is maintained.
 
-This functionality could be offloaded to a generic library that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work).
+This functionality was offloaded to a generic library https://github.com/vrza/array-with-secondary-keys[Array with Secondary Keys], that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work). In turn, building specific collection inspired building https://github.com/vrza/cardinal-collections[Cardinal Collections], a PHP toolkit for building collections.
+
+==== Implement receiving, handling and responding to control messages
+
+Included is the `lrpmctl` tool, which uses the https://github.com/vrza/php-tipc[tipc] library to exchange messages with a running instance of LRPM. Some examples of messages include getting the `status` of running processes (see screenshot above), and requesting a `restart` of a process.
 
 === TODO
 

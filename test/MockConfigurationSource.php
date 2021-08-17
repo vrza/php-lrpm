@@ -19,17 +19,20 @@ class MockConfigurationSource implements ConfigurationSource
             23 => [
                 'name' => 'twenty-three',
                 'workerClass' => '\PHPLRPM\Test\MockWorker',
-                'mtime' => $this->mtime
+                'mtime' => $this->mtime,
+                'workerConfig' => []
             ],
             42 => [
                 'name' => 'forty-two',
                 'workerClass' => '\PHPLRPM\Test\MockWorker',
-                'mtime' => time()
+                'mtime' => time(),
+                'workerConfig' => []
             ],
             33 => [
                 'name' => 'thirty-three',
                 'workerClass' => '\PHPLRPM\Test\MockWorker',
-                'mtime' => $this->mtime
+                'mtime' => $this->mtime,
+                'workerConfig' => []
             ]
         ];
         return $configurationItems;
