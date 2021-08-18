@@ -215,7 +215,7 @@ class WorkerMetadata {
             fwrite(STDOUT, "Unmarking job $id as stopping" . PHP_EOL);
             unset($this->stopping[$id]);
         } else {
-            fwrite(STDERR, "CRITICAL: Tried to unmark job not marked as stopping. This is a bug." . PHP_EOL);
+            fwrite(STDOUT, "Cannot unmark job $id as stopping, it was not terminated by our signal" . PHP_EOL);
         }
     }
 
