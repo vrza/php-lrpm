@@ -39,7 +39,8 @@ Currently LRPM is not intended to run as PID 1, nor was it tested in this role.
 
 Configuration is a simple associative array of jobs to run. Here's an example configuration consisting of a single job, with all the mandatory fields described in comments:
 
-```
+[source,php]
+----
 $config = [
     42 => [ // Unique job id (string or int)
         'name' => 'Job 42', // Descriptive name (string)
@@ -48,7 +49,7 @@ $config = [
         'workerConfig' => [] // Array of additional configuration specific to the Worker implementation (array)
     ]
 ]
-```
+----
 
 Class `ConfigurationValidator` is used for config validation internally, and you can also use it to test your `ConfigurationSource` implementation.
 
