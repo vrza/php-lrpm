@@ -104,7 +104,7 @@ class ProcessManager implements MessageHandler
         foreach ($this->workersMetadata->stopping as $id => $v) {
             $elapsed = time() - $v['time'];
             if ($elapsed >= $timeout) {
-                fwrite(STDOUT,"id {$id} with PID {$v['pid']} stopping for $elapsed seconds, sending SIGKILL" . PHP_EOL);
+                fwrite(STDOUT,"id $id with PID {$v['pid']} stopping for $elapsed seconds, sending SIGKILL" . PHP_EOL);
                 posix_kill($v['pid'], SIGKILL);
             }
         }
