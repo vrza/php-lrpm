@@ -7,7 +7,7 @@ use CardinalCollections\ArrayWithSecondaryKeys\ArrayWithSecondaryKeys;
 use CardinalCollections\Mutable\Set;
 
 /*
- * (int) => [
+ * $id => [
  *     'config' => []; // user defined
  *     'state' => [
  *         'pid' => (int)
@@ -37,6 +37,8 @@ class WorkerMetadata {
     public $start;
     public $stop;
     public $restart;
+
+    public $stopping = [];
 
     public function __construct()
     {
@@ -100,6 +102,7 @@ class WorkerMetadata {
     {
         $id = $this->metadata->getPrimaryKeyByIndex(self::PID_KEY, $pid);
         $this->scheduleRestart($id);
+        $this->unmarkAsStopping($id);
         return $this->removePid($pid);
     }
 
@@ -129,7 +132,7 @@ class WorkerMetadata {
             fwrite(STDOUT, "Job $id run time was too short, backing off for seconds: " . $job['state']['backoffInterval'] . PHP_EOL);
             var_dump($job['state']);
         } else {
-            fwrite(STDOUT, "Job $id run time was longer than " . self::SHORT_RUN_TIME_SECONDS . ", resetting backoff" . PHP_EOL);
+            fwrite(STDOUT, "Job $id run time was longer than " . self::SHORT_RUN_TIME_SECONDS . " seconds, resetting backoff" . PHP_EOL);
             $job['state']['restartAt'] = $now;
             $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
         }
@@ -188,6 +191,42 @@ class WorkerMetadata {
         $this->setDbState($id, WorkerMetadata::UNCHANGED);
     }
 
+    public function markAsStopping($id)
+    {
+        if (!$this->has($id)) {
+            throw new InvalidArgumentException("Cannot mark job with id $id as stopping, id does not exist" . PHP_EOL);
+        }
+        $job = $this->metadata->get($id);
+        if (!empty($job['state']['pid'])) {
+            fwrite(STDOUT, "Marking job " . $id . " with pid " . $job['state']['pid'] . " as stopping" . PHP_EOL);
+            $this->stopping[$id]['pid'] = $job['state']['pid'];
+            $this->stopping[$id]['time'] = time();
+        } else {
+            fwrite(STDERR, "Job $id is not running, cannot mark it as stopping" . PHP_EOL);
+        }
+    }
+
+    private function unmarkAsStopping($id)
+    {
+        if (!$this->has($id)) {
+            throw new InvalidArgumentException("Cannot unmark job with id $id as stopping, id does not exist" . PHP_EOL);
+        }
+        if (isset($this->stopping[$id])) {
+            fwrite(STDOUT, "Unmarking job $id as stopping" . PHP_EOL);
+            unset($this->stopping[$id]);
+        } else {
+            fwrite(STDERR, "CRITICAL: Tried to unmark job not marked as stopping. This is a bug." . PHP_EOL);
+        }
+    }
+
+    public function isStopping($id)
+    {
+        if (!$this->has($id)) {
+            throw new InvalidArgumentException("Cannot check if job with $id is stopping, id does not exist" . PHP_EOL);
+        }
+        return isset($this->stopping[$id]);
+    }
+
     public function updateJob($id, array $config)
     {
         if (!$this->has($id)) {
@@ -243,15 +282,12 @@ class WorkerMetadata {
     public function slateJobStateUpdates(): void
     {
         foreach ($this->metadata as $id => $job) {
-            //fwrite(STDOUT, "State sync map checking job $id" . PHP_EOL); flush();
-
             switch($job['state']['dbState']) {
                 case self::UNCHANGED:
                     // for all UNCHANGED jobs
                     // - check if they need to be restarted:
                     // - if their PID == null AND their restartAt < now(), slate for start
                     //fwrite(STDOUT, "Job $id is UNCHANGED" . PHP_EOL);
-                    //var_dump($job['state']);
                     if (empty($job['state']['pid']) && !empty($job['state']['restartAt']) && $job['state']['restartAt'] < time()) {
                         fwrite(STDOUT, date('c', time()) . " Job $id restart time reached, slating start" . PHP_EOL);
                         $this->start->add($id);
@@ -268,13 +304,11 @@ class WorkerMetadata {
                 case self::ADDED:
                     // for all ADDED jobs, slate for start
                     fwrite(STDOUT, "Job $id is ADDED" . PHP_EOL);
-                    //var_dump($job['state']);
                     $this->start->add($id);
                     break;
                 case self::UPDATED:
                     // for all UPDATED jobs, slate for restart if job is running, slate for start if not running
                     fwrite(STDOUT, "Job $id is UPDATED" . PHP_EOL);
-                    //var_dump($job['state']);
                     if (!empty($job['state']['pid'])) {
                         fwrite(STDOUT, "Slating job " . $id . " with pid " . $job['state']['pid'] . " for restart" . PHP_EOL);
                         $this->restart->add($id);
