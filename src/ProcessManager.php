@@ -11,14 +11,14 @@ class ProcessManager implements MessageHandler
 {
     private const EXIT_SUCCESS = 0;
 
-    private $workersMetadata;
-    private $timeOfLastConfigPoll = 0;
-    private $secondsBetweenConfigPolls = 10;
+    private $secondsBetweenConfigPolls = 30; // TODO configuration
     private $secondsBetweenProcessStatePolls = 1;
 
+    private $workersMetadata;
     private $configurationSource;
-
     private $messageServer;
+
+    private $timeOfLastConfigPoll = 0;
     private $shouldRun = true;
 
     public function __construct(ConfigurationSource $configurationSource)
@@ -49,7 +49,7 @@ class ProcessManager implements MessageHandler
                 return 'lrpm: Shutting down process manager';
             case 'restart':
                 return isset($args[1])
-                    ? $this->workersMetadata->scheduleImmediateRestart($args[1])
+                    ? $this->workersMetadata->scheduleRestartOnDemand($args[1])
                     : 'lrpm: restart requires a job id argument';
             default:
                 return "lrpm: '$msg' is not a valid command. $help";
@@ -64,7 +64,7 @@ class ProcessManager implements MessageHandler
 
     private function startProcess($id): void
     {
-        $job = $this->workersMetadata->getById($id);
+        $job = $this->workersMetadata->getJobById($id);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
             fwrite(STDOUT, '--> Child process starting' . PHP_EOL);
@@ -84,29 +84,38 @@ class ProcessManager implements MessageHandler
 
     private function stopProcess($id): bool
     {
-        $job = $this->workersMetadata->getById($id);
+        $job = $this->workersMetadata->getJobById($id);
         if (empty($job['state']['pid'])) {
-            fwrite(STDERR, 'Cannot stop job ' . $id . ', it is not running' . PHP_EOL);
+            fwrite(STDERR, "Cannot stop job $id, it is not running" . PHP_EOL);
             return false;
         }
+        if ($this->workersMetadata->isStopping($id)) {
+            $elapsed = time() - $this->workersMetadata->stopping[$id]['time'];
+            fwrite(STDERR, "Job $id received SIGTERM $elapsed seconds ago" . PHP_EOL);
+            return true;
+        }
+        $this->workersMetadata->markAsStopping($id);
         return posix_kill($job['state']['pid'], SIGTERM);
+    }
+
+    private function checkStoppingProcesses(): void
+    {
+        $timeout = 10; // TODO configuration
+        foreach ($this->workersMetadata->stopping as $id => $v) {
+            $elapsed = time() - $v['time'];
+            if ($elapsed >= $timeout) {
+                fwrite(STDOUT,"id $id with PID {$v['pid']} stopping for $elapsed seconds, sending SIGKILL" . PHP_EOL);
+                posix_kill($v['pid'], SIGKILL);
+            }
+        }
     }
 
     private function reapAndRespawn(): void
     {
         $reapResults = ProcessUtilities::reapAnyChildren();
         $pids = array_keys($reapResults);
-        $exited = $this->workersMetadata->scheduleRestartsByPIDs($pids);
+        $exited = $this->workersMetadata->scheduleRestartOfTerminatedProcesses($pids);
         fwrite(STDOUT, "==> Jobs terminated: " . implode(',', $exited) . PHP_EOL);
-        //var_dump($exited);
-        //var_dump($this->workersMetadata->getAll());
-        /*
-        $jobsToRespawn = array_filter($exited, function ($id): bool { return $this->workersMetadata->has($id); });
-        fwrite(STDOUT, "==> Respawning jobs: " . implode(',', $jobsToRespawn) . PHP_EOL);
-        foreach ($jobsToRespawn as $id) {
-            $this->workersMetadata->start[$id] = $this->workersMetadata->getById($id);
-        }
-        */
     }
 
     private function pollConfigurationSourceForChanges(): void
@@ -119,7 +128,7 @@ class ProcessManager implements MessageHandler
                 $this->workersMetadata->purgeRemovedJobs();
                 foreach ($newWorkers as $jobId => $newJobConfig) {
                     if ($this->workersMetadata->has($jobId)) {
-                        $oldJob = $this->workersMetadata->getById($jobId);
+                        $oldJob = $this->workersMetadata->getJobById($jobId);
                         if ($newJobConfig['mtime'] > $oldJob['config']['mtime']) {
                             $this->workersMetadata->updateJob($jobId, $newJobConfig);
                         } else {
@@ -147,6 +156,7 @@ class ProcessManager implements MessageHandler
         // process manager main loop
         while ($this->shouldRun) {
             $this->pollConfigurationSourceForChanges();
+
             if (count($this->workersMetadata->restart) > 0) {
                 fwrite(STDOUT,'==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
             }
@@ -168,15 +178,15 @@ class ProcessManager implements MessageHandler
                 $this->startProcess($id);
                 $this->workersMetadata->start->remove($id);
             }
-            //fwrite(STDOUT, "Workers metadata before cleanup:" . PHP_EOL);
-            //var_dump($this->workersMetadata->getAll());
-            pcntl_signal_dispatch();
-            //fwrite(STDOUT, "Workers metadata after cleanup:" . PHP_EOL);
-            //var_dump($this->workersMetadata->getAll());
+
+            $this->checkStoppingProcesses();
 
             $this->messageServer->checkMessages();
 
+            // sleep might get interrupted by a SIGCHLD,
+            // so we make sure signal handlers run right after
             sleep($this->secondsBetweenProcessStatePolls);
+            pcntl_signal_dispatch();
         }
 
         fwrite(STDERR, "Clean shutdown." . PHP_EOL);

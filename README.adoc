@@ -80,11 +80,13 @@ This functionality was offloaded to a generic library https://github.com/vrza/ar
 
 Included is the `lrpmctl` tool, which uses the https://github.com/vrza/php-tipc[tipc] library to exchange messages with a running instance of LRPM. Some examples of messages include getting the `status` of running processes (see screenshot above), and requesting a `restart` of a process.
 
+==== Make sure unresponsive processes get terminated
+
+Wait for children to terminate after sending SIGTERM, follow up with SIGKILL if child doesn't respond to SIGTERM after some time.
+
 === TODO
 
 ==== Blocking shutdown
-
-Wait for children after sending SIGTERM, follow up with SIGKILL if child doesn't respond to SIGTERM.
 
 Implement blocking shutdown that waits for all children to exit.
 
