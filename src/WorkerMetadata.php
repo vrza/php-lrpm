@@ -187,7 +187,7 @@ class WorkerMetadata {
         }
     }
 
-    public function isStopping($id)
+    public function isStopping($id): bool
     {
         if (!$this->has($id)) {
             throw new InvalidArgumentException("Cannot check if job with $id is stopping, id does not exist" . PHP_EOL);
