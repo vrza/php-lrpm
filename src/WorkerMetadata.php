@@ -59,59 +59,33 @@ class WorkerMetadata {
         return $this->metadata->containsPrimaryKey($id);
     }
 
-    public function getById($id): array
+    public function getJobById($id): array
     {
+        if (!$this->has($id)) {
+            throw new InvalidArgumentException("Unknown job id: $id" . PHP_EOL);
+        }
         return $this->metadata->get($id);
     }
 
-    public function getJobsById(iterable $ids): array
-    {
-        $result = [];
-        foreach ($ids as $id) {
-            if ($this->has($id)) {
-                $result[$id] = $this->getById($id);
-            }
-        }
-        return $result;
-    }
-
-    public function getJobByPid(int $pid): array
-    {
-        if (empty($pid) || !is_int($pid) || $pid < 1) {
-            throw new InvalidArgumentException("PID must be a positive integer");
-        }
-        return $this->metadata->getByIndex(self::PID_KEY, $pid);
-    }
-
-    public function removePid(int $pid)
+    private function removePid(int $pid)
     {
         return $this->metadata->updateSecondaryKey(self::PID_KEY, $pid, null);
     }
 
-    public function removePids(array $pids): array
+    public function scheduleRestartOfTerminatedProcesses(array $pids): array
     {
-        return array_map(function ($pid) { return $this->removePid($pid); }, $pids);
+        return array_map(function ($pid) { return $this->scheduleRestartOfTerminatedProcess($pid); }, $pids);
     }
 
-    public function scheduleRestartsByPIDs(array $pids): array
-    {
-        return array_map(function ($pid) { return $this->scheduleRestartByPID($pid); }, $pids);
-    }
-
-    public function scheduleRestartByPID(int $pid)
+    private function scheduleRestartOfTerminatedProcess(int $pid)
     {
         $id = $this->metadata->getPrimaryKeyByIndex(self::PID_KEY, $pid);
-        $this->scheduleRestart($id);
+        $this->scheduleRestartWithBackoff($id);
         $this->unmarkAsStopping($id);
         return $this->removePid($pid);
     }
 
-    public function scheduleRestarts(array $ids): array
-    {
-        return array_map(function ($id) { return $this->scheduleRestart($id); }, $ids);
-    }
-
-    public function scheduleRestart($id)
+    private function scheduleRestartWithBackoff($id)
     {
         if (!$this->has($id)) {
             fwrite(STDERR, "Will not restart job $id, it does not exist" . PHP_EOL);
@@ -141,7 +115,7 @@ class WorkerMetadata {
         return $id;
     }
 
-    public function scheduleImmediateRestart($id): string
+    public function scheduleRestartOnDemand($id): string
     {
         if (!$this->has($id)) {
             return("Will not restart job $id, it does not exist");
@@ -163,13 +137,10 @@ class WorkerMetadata {
 
     public function updateStartedJob($id, int $pid)
     {
-        if (!$this->has($id)) {
-            throw new InvalidArgumentException("Cannot update started job, id $id does not exist" . PHP_EOL);
-        }
-        $metadata = $this->metadata->get($id);
-        $metadata['state']['startedAt'] = time();
-        $metadata['state']['pid'] = $pid;
-        $this->metadata->put($id, $metadata);
+        $job = $this->getJobById($id);
+        $job['state']['startedAt'] = time();
+        $job['state']['pid'] = $pid;
+        $this->metadata->put($id, $job);
         return $id;
     }
 
@@ -193,10 +164,7 @@ class WorkerMetadata {
 
     public function markAsStopping($id)
     {
-        if (!$this->has($id)) {
-            throw new InvalidArgumentException("Cannot mark job with id $id as stopping, id does not exist" . PHP_EOL);
-        }
-        $job = $this->metadata->get($id);
+        $job = $this->getJobById($id);
         if (!empty($job['state']['pid'])) {
             fwrite(STDOUT, "Marking job " . $id . " with pid " . $job['state']['pid'] . " as stopping" . PHP_EOL);
             $this->stopping[$id]['pid'] = $job['state']['pid'];
@@ -229,11 +197,8 @@ class WorkerMetadata {
 
     public function updateJob($id, array $config)
     {
-        if (!$this->has($id)) {
-            throw new InvalidArgumentException("Cannot update job with id $id, id does not exist" . PHP_EOL);
-        }
+        $job = $this->getJobById($id);
         fwrite(STDOUT, "Setting fresh config for job $id" . PHP_EOL);
-        $job = $this->metadata->get($id);
         $job['config'] = $config;
         $job['state']['dbState'] = self::UPDATED;
         $job['state']['restartAt'] = time();

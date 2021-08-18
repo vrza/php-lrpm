@@ -49,7 +49,7 @@ class ProcessManager implements MessageHandler
                 return 'lrpm: Shutting down process manager';
             case 'restart':
                 return isset($args[1])
-                    ? $this->workersMetadata->scheduleImmediateRestart($args[1])
+                    ? $this->workersMetadata->scheduleRestartOnDemand($args[1])
                     : 'lrpm: restart requires a job id argument';
             default:
                 return "lrpm: '$msg' is not a valid command. $help";
@@ -64,7 +64,7 @@ class ProcessManager implements MessageHandler
 
     private function startProcess($id): void
     {
-        $job = $this->workersMetadata->getById($id);
+        $job = $this->workersMetadata->getJobById($id);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
             fwrite(STDOUT, '--> Child process starting' . PHP_EOL);
@@ -84,7 +84,7 @@ class ProcessManager implements MessageHandler
 
     private function stopProcess($id): bool
     {
-        $job = $this->workersMetadata->getById($id);
+        $job = $this->workersMetadata->getJobById($id);
         if (empty($job['state']['pid'])) {
             fwrite(STDERR, "Cannot stop job $id, it is not running" . PHP_EOL);
             return false;
@@ -114,7 +114,7 @@ class ProcessManager implements MessageHandler
     {
         $reapResults = ProcessUtilities::reapAnyChildren();
         $pids = array_keys($reapResults);
-        $exited = $this->workersMetadata->scheduleRestartsByPIDs($pids);
+        $exited = $this->workersMetadata->scheduleRestartOfTerminatedProcesses($pids);
         fwrite(STDOUT, "==> Jobs terminated: " . implode(',', $exited) . PHP_EOL);
     }
 
@@ -128,7 +128,7 @@ class ProcessManager implements MessageHandler
                 $this->workersMetadata->purgeRemovedJobs();
                 foreach ($newWorkers as $jobId => $newJobConfig) {
                     if ($this->workersMetadata->has($jobId)) {
-                        $oldJob = $this->workersMetadata->getById($jobId);
+                        $oldJob = $this->workersMetadata->getJobById($jobId);
                         if ($newJobConfig['mtime'] > $oldJob['config']['mtime']) {
                             $this->workersMetadata->updateJob($jobId, $newJobConfig);
                         } else {
