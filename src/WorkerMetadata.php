@@ -104,7 +104,6 @@ class WorkerMetadata {
                 $job['state']['backoffInterval'] = self::MAX_BACKOFF;
             }
             fwrite(STDOUT, "Job $id run time was too short, backing off for seconds: " . $job['state']['backoffInterval'] . PHP_EOL);
-            var_dump($job['state']);
         } else {
             fwrite(STDOUT, "Job $id run time was longer than " . self::SHORT_RUN_TIME_SECONDS . " seconds, resetting backoff" . PHP_EOL);
             $job['state']['restartAt'] = $now;
@@ -147,6 +146,19 @@ class WorkerMetadata {
     public function getAllPids(): array
     {
         return $this->metadata->secondaryKeys(self::PID_KEY);
+    }
+
+    public function getJobIdsByPids(array $pids): array
+    {
+        return array_map(function ($pid) { return $this->getJobIdByPid($pid); }, $pids);
+    }
+
+    public function getJobIdByPid(int $pid)
+    {
+        if (empty($pid) || !is_int($pid) || $pid < 1) {
+            throw new InvalidArgumentException("PID must be a positive integer");
+        }
+        return $this->metadata->getPrimaryKeyByIndex(self::PID_KEY, $pid);
     }
 
     public function setDbState($id, int $dbState): void
