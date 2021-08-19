@@ -40,11 +40,19 @@ class ConfigurationValidator
                 }
             ],
             'shortRunTimeSeconds' => [
-                'description' => 'Minimum number of seconds a process is expected to run',
+                'description' => 'Minimum number of seconds a process is expected to run; if the process terminates earlier then this number, it will be restarted with backoff',
                 'mandatory' => false,
                 'default' => 5,
                 'valid' => function($shortRunTimeSeconds) {
                     return is_int($shortRunTimeSeconds) && $shortRunTimeSeconds >= 0;
+                }
+            ],
+            'shutdownTimeoutSeconds' => [
+                'description' => 'Time in seconds to wait for SIGCHLD after sending SIGTERM to a child, before killing the child with SIGKILL',
+                'mandatory' => false,
+                'default' => 10,
+                'valid' => function($shutdownTimeoutSeconds) {
+                    return is_int($shutdownTimeoutSeconds) && $shutdownTimeoutSeconds >= 0;
                 }
             ]
         ];
