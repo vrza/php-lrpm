@@ -90,19 +90,19 @@ class ProcessManager implements MessageHandler
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
-            $pid = getmypid();
-            fwrite(STDOUT, "--> Child process $pid starting" . PHP_EOL);
-            fwrite(STDOUT, "--> Child process $pid setting default signal handlers" . PHP_EOL);
+            $childPid = getmypid();
+            fwrite(STDOUT, "--> Child process $childPid starting" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process $childPid setting default signal handlers" . PHP_EOL);
             foreach ($this->signalHandlers as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }
             $workerClassName = $job['config']['workerClass'];
-            fwrite(STDOUT, "--> Child process $pid initializing Worker" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process $childPid initializing Worker" . PHP_EOL);
             $worker = new $workerClassName();
             $workerProcess = new WorkerProcess($worker);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             $workerProcess->work($job['config']);
-            fwrite(STDOUT, "--> Child process $pid exiting" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process $childPid exiting" . PHP_EOL);
             exit(self::EXIT_SUCCESS);
         } elseif ($pid > 0) { // parent process
             $this->workersMetadata->updateStartedJob($id, $pid);
