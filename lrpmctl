@@ -27,21 +27,16 @@ if (array_key_exists('h', $options) || array_key_exists('help', $options)) {
     fwrite(STDERR, $helpmsg);
     exit(EXIT_USAGE);
 }
-// TODO use stream_isatty in >= PHP 7.2
-$color = posix_isatty(STDOUT);
-if (array_key_exists('color', $options)) {
-    $arg = $options['color'];
-    if ($arg === 'auto' || $arg === false) {
-        // default
-    } elseif ($arg === 'always') {
-        $color = true;
-    } elseif ($arg === 'never') {
-        $color = false;
-    } else {
-        fwrite(STDERR, $helpmsg);
-        exit(EXIT_USAGE);
-    }
+
+$arg = $options['color'] ?? null;
+if (!is_null($arg) && !in_array($arg, [false, 'auto', 'always', 'never'])) {
+    fwrite(STDERR, $helpmsg);
+    exit(EXIT_USAGE);
 }
+$color = $arg === 'always' || $arg === false ? true
+       : ($arg === 'never' ? false
+       : posix_isatty(STDOUT));
+
 $rest = array_slice($argv, $rest_index);
 if (count($rest) < 1) {
     fwrite(STDERR, $helpmsg);
@@ -100,7 +95,8 @@ function exitNoConnection(): void
 
 function handleResponse(string $msg, string $response, bool $color): void
 {
-    if ($msg === 'status') {
+    $args = explode(' ', $msg);
+    if ($args[0] === 'status') {
         statusResponseHandler($response, $color);
     } else {
         genericResponseHandler($response);
