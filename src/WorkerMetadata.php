@@ -24,8 +24,6 @@ class WorkerMetadata {
     const REMOVED = 2;
     const UPDATED = 3;
 
-    const SHORT_RUN_TIME_SECONDS = 5;
-
     const DEFAULT_BACKOFF = 1;
     const MAX_BACKOFF = 60 * 60 * 6;
     const BACKOFF_MULTIPLIER = 2;
@@ -97,7 +95,7 @@ class WorkerMetadata {
         }
         $job = $this->metadata->get($id);
         $now = time();
-        if ($now < $job['state']['startedAt'] + self::SHORT_RUN_TIME_SECONDS) {
+        if ($now < $job['state']['startedAt'] + $job['config']['shortRunTimeSeconds']) {
             $job['state']['restartAt'] = $now + $job['state']['backoffInterval'];
             $job['state']['backoffInterval'] *= self::BACKOFF_MULTIPLIER;
             if ($job['state']['backoffInterval'] > self::MAX_BACKOFF) {
@@ -105,7 +103,7 @@ class WorkerMetadata {
             }
             fwrite(STDOUT, "Job $id run time was too short, backing off for seconds: " . $job['state']['backoffInterval'] . PHP_EOL);
         } else {
-            fwrite(STDOUT, "Job $id run time was longer than " . self::SHORT_RUN_TIME_SECONDS . " seconds, resetting backoff" . PHP_EOL);
+            fwrite(STDOUT, "Job $id run time was longer than " . $job['config']['shortRunTimeSeconds'] . " seconds, resetting backoff" . PHP_EOL);
             $job['state']['restartAt'] = $now;
             $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
         }
