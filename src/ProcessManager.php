@@ -90,22 +90,24 @@ class ProcessManager implements MessageHandler
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
-            fwrite(STDOUT, '--> Child process starting' . PHP_EOL);
-            fwrite(STDOUT, '--> Child setting default signal handlers' . PHP_EOL);
+            $pid = getmypid();
+            fwrite(STDOUT, "--> Child process $pid starting" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process $pid setting default signal handlers" . PHP_EOL);
             foreach ($this->signalHandlers as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }
             $workerClassName = $job['config']['workerClass'];
+            fwrite(STDOUT, "--> Child process $pid initializing Worker" . PHP_EOL);
             $worker = new $workerClassName();
             $workerProcess = new WorkerProcess($worker);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             $workerProcess->work($job['config']);
-            fwrite(STDOUT, '--> Child process exiting' . PHP_EOL);
+            fwrite(STDOUT, "--> Child process $pid exiting" . PHP_EOL);
             exit(self::EXIT_SUCCESS);
         } elseif ($pid > 0) { // parent process
-            fwrite(STDOUT, '==> Forked a child with PID ' . $pid . PHP_EOL);
             $this->workersMetadata->updateStartedJob($id, $pid);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
+            fwrite(STDOUT, '==> Forked a child with PID ' . $pid . PHP_EOL);
         } else {
             fwrite(STDERR, '==> Error forking child process: ' . $pid . PHP_EOL);
         }
