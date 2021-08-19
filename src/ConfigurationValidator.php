@@ -40,7 +40,7 @@ class ConfigurationValidator
                 }
             ],
             'shortRunTimeSeconds' => [
-                'description' => 'Minimum number of seconds a process is expected to run; if the process terminates earlier then this number, it will be restarted with backoff',
+                'description' => 'Minimum number of seconds a process is expected to run; if the process terminates earlier then this, it will be restarted with backoff',
                 'mandatory' => false,
                 'default' => 5,
                 'valid' => function($shortRunTimeSeconds) {
@@ -90,6 +90,11 @@ class ConfigurationValidator
     public function getErrors(): array
     {
         return $this->errors;
+    }
+
+    public function getFields(): array
+    {
+        return $this->fields;
     }
 
     public static function filter(array $configs): array
