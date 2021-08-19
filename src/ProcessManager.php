@@ -11,7 +11,7 @@ class ProcessManager implements MessageHandler
 {
     private const EXIT_SUCCESS = 0;
 
-    private $secondsBetweenConfigPolls = 30; // TODO configuration
+    private $configPollIntervalSeconds;
     private $secondsBetweenProcessStatePolls = 1;
 
     private $signalHandlers;
@@ -22,10 +22,11 @@ class ProcessManager implements MessageHandler
     private $timeOfLastConfigPoll = 0;
     private $shouldRun = true;
 
-    public function __construct(ConfigurationSource $configurationSource)
+    public function __construct(ConfigurationSource $configurationSource, int $configPollIntervalSeconds = 30)
     {
         fwrite(STDERR, "lrpm starting" . PHP_EOL);
         $this->configurationSource = $configurationSource;
+        $this->configPollIntervalSeconds = $configPollIntervalSeconds;
         $this->workersMetadata = new WorkerMetadata();
         $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
         $this->messageServer =  new UnixSocketStreamServer($file, $this);
@@ -151,7 +152,7 @@ class ProcessManager implements MessageHandler
 
     private function pollConfigurationSourceForChanges(): void
     {
-        if ($this->timeOfLastConfigPoll + $this->secondsBetweenConfigPolls <= time()) {
+        if ($this->timeOfLastConfigPoll + $this->configPollIntervalSeconds <= time()) {
             $this->timeOfLastConfigPoll = time(); // TODO wait a full cycle even when db is not reachable
             try {
                 $unvalidatedNewWorkers = $this->configurationSource->loadConfiguration();
