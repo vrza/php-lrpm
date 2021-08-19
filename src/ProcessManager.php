@@ -132,11 +132,12 @@ class ProcessManager implements MessageHandler
 
     private function checkStoppingProcesses(): void
     {
-        $timeout = 10; // TODO configuration
         foreach ($this->workersMetadata->stopping as $id => $v) {
+            $job = $this->workersMetadata->getJobById($id);
+            $timeout = $job['config']['shutdownTimeoutSeconds'];
             $elapsed = time() - $v['time'];
             if ($elapsed >= $timeout) {
-                fwrite(STDERR,"id $id with PID {$v['pid']} stopping for $elapsed seconds, sending SIGKILL" . PHP_EOL);
+                fwrite(STDERR,"Job $id with PID {$v['pid']} shutdown timeout reached after $elapsed seconds, sending SIGKILL" . PHP_EOL);
                 posix_kill($v['pid'], SIGKILL);
             }
         }
