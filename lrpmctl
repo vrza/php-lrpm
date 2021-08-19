@@ -27,12 +27,12 @@ if (array_key_exists('h', $options) || array_key_exists('help', $options)) {
     fwrite(STDERR, $helpmsg);
     exit(EXIT_USAGE);
 }
-$color = false;
+// TODO use stream_isatty in >= PHP 7.2
+$color = posix_isatty(STDOUT);
 if (array_key_exists('color', $options)) {
     $arg = $options['color'];
     if ($arg === 'auto' || $arg === false) {
-        // TODO use stream_isatty in >= PHP 7.2
-        $color = posix_isatty(STDOUT);
+        // default
     } elseif ($arg === 'always') {
         $color = true;
     } elseif ($arg === 'never') {
@@ -56,7 +56,7 @@ probeForAutoloader($progname);
 
 use TIPC\UnixSocketStreamClient;
 use PrettyPrint\Table;
-use PrettyPrint\AnsiSeq;
+use TerminalPalette\AnsiSeq;
 
 $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
 $client = new UnixSocketStreamClient($file);

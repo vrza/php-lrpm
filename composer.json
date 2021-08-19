@@ -21,6 +21,10 @@
         {
             "type": "vcs",
             "url": "https://github.com/vrza/php-pretty-print"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/vrza/terminal-palette"
         }
     ],
     "require": {
@@ -31,7 +35,8 @@
         "vrza/array-with-secondary-keys": "dev-main",
         "vrza/cardinal-collections": "dev-main",
         "vrza/php-tipc": "dev-main",
-        "vrza/php-pretty-print": "dev-main"
+        "vrza/php-pretty-print": "dev-main",
+        "vrza/terminal-palette": "dev-main"
     },
     "autoload": {
         "psr-4": {
