@@ -15,18 +15,18 @@ class WorkerProcess {
     {
         $this->worker = $worker;
         pcntl_signal(SIGTERM,  function (int $signo, $_siginfo) {
-            fwrite(STDOUT, "==> Caught SIGTERM" . PHP_EOL);
+            fwrite(STDOUT, "--> Worker caught SIGTERM" . PHP_EOL);
             $this->shutdown_signal_handler($signo);
         });
         pcntl_signal(SIGINT,  function (int $signo, $_siginfo) {
-            fwrite(STDOUT, "==> Caught SIGINT" . PHP_EOL);
+            fwrite(STDOUT, "--> Worker caught SIGINT" . PHP_EOL);
             $this->shutdown_signal_handler($signo);
         });
     }
 
     private function shutdown_signal_handler(int $signo): void
     {
-        fwrite(STDOUT, "==> Shutdown signal handler " . $signo . PHP_EOL);
+        fwrite(STDOUT, "--> Worker shutdown signal handler " . $signo . PHP_EOL);
         $this->shutdown = true;
     }
 
@@ -51,7 +51,7 @@ class WorkerProcess {
             $this->checkParent();
             pcntl_signal_dispatch();
             if ($this->shutdown) {
-                fwrite(STDOUT, "--> Shutdown requested, exiting" . PHP_EOL);
+                fwrite(STDOUT, "--> Worker shutdown requested, exiting" . PHP_EOL);
                 exit(self::EXIT_SUCCESS);
             }
         }

@@ -59,7 +59,11 @@ See `example.php` for a full running example with more details.
 
 === Signal handling
 
-If you implement your own signal handlers, make sure that your Worker process shuts down cleanly after receiving SIGTERM. Default SIGTERM and SIGINT handlers will terminate the Worker before the next loop cycle.
+LRPM supervisor process installs signal handlers for SIGCHLD, SIGTERM and SIGINT.
+
+You can implement and install your own signal handlers inside your Worker implementation, but make sure that your Worker process shuts down cleanly after receiving SIGTERM, otherwise LRPM will consider it unresponsive and follow up with a SIGKILL.
+
+Default SIGTERM and SIGINT handlers will terminate the Worker before the next loop cycle.
 
 == Operating LRPM
 

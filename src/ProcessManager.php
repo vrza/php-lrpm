@@ -14,6 +14,7 @@ class ProcessManager implements MessageHandler
     private $secondsBetweenConfigPolls = 30; // TODO configuration
     private $secondsBetweenProcessStatePolls = 1;
 
+    private $signalHandlers;
     private $workersMetadata;
     private $configurationSource;
     private $messageServer;
@@ -56,41 +57,55 @@ class ProcessManager implements MessageHandler
 
     private function installSignalHandlers(): void
     {
-        pcntl_signal(SIGCHLD, function (int $signo, $_siginfo) {
-            fwrite(STDERR, "==> Caught SIGCHLD" . PHP_EOL);
-            $this->sigchld_handler($signo);
-        });
-        pcntl_signal(SIGTERM, function (int $signo, $_siginfo) {
-            fwrite(STDERR, "==> Caught SIGTERM ($signo), initiating LRPM shutdown" . PHP_EOL);
-            $this->shouldRun = false;
-        });
-        pcntl_signal(SIGINT, function (int $signo, $_siginfo) {
-            fwrite(STDERR, "==> Caught SIGINT ($signo), initiating LRPM shutdown" . PHP_EOL);
-            $this->shouldRun = false;
-        });
+        $this->signalHandlers = [
+            SIGCHLD => function (int $signo, $_siginfo) {
+                fwrite(STDERR, "==> lrpm caught SIGCHLD" . PHP_EOL);
+                $this->sigchld_handler($signo);
+            },
+            SIGTERM => function (int $signo, $_siginfo) {
+                fwrite(STDERR, "==> lrpm caught SIGTERM ($signo), initiating LRPM shutdown" . PHP_EOL);
+                $this->shouldRun = false;
+            },
+            SIGINT => function (int $signo, $_siginfo) {
+                fwrite(STDERR, "==> lrpm caught SIGINT ($signo), initiating LRPM shutdown" . PHP_EOL);
+                $this->shouldRun = false;
+            }
+        ];
+
+        foreach ($this->signalHandlers as $signal => $handler) {
+            pcntl_signal($signal, $handler);
+        }
     }
 
     private function sigchld_handler(int $signo): void
     {
-        fwrite(STDOUT, "==> SIGCHLD handler handling signal " . $signo . PHP_EOL);
+        fwrite(STDOUT, "==> lrpm SIGCHLD handler handling signal " . $signo . PHP_EOL);
         $this->reapAndRespawn();
     }
 
     private function startProcess($id): void
     {
         $job = $this->workersMetadata->getJobById($id);
+        $signals = array_keys($this->signalHandlers);
+        pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
             fwrite(STDOUT, '--> Child process starting' . PHP_EOL);
+            fwrite(STDOUT, '--> Child setting default signal handlers' . PHP_EOL);
+            foreach ($this->signalHandlers as $signal => $_handler) {
+                pcntl_signal($signal, SIG_DFL);
+            }
             $workerClassName = $job['config']['workerClass'];
             $worker = new $workerClassName();
             $workerProcess = new WorkerProcess($worker);
+            pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             $workerProcess->work($job['config']);
             fwrite(STDOUT, '--> Child process exiting' . PHP_EOL);
             exit(self::EXIT_SUCCESS);
         } elseif ($pid > 0) { // parent process
             fwrite(STDOUT, '==> Forked a child with PID ' . $pid . PHP_EOL);
             $this->workersMetadata->updateStartedJob($id, $pid);
+            pcntl_sigprocmask(SIG_UNBLOCK, $signals);
         } else {
             fwrite(STDERR, '==> Error forking child process: ' . $pid . PHP_EOL);
         }
