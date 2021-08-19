@@ -9,7 +9,7 @@ class WorkerProcess {
     private $worker;
 
     private $ppid = -1;
-    private $shutdown = false;
+    private $shouldRun = true;
 
     public function __construct(Worker $worker)
     {
@@ -27,7 +27,7 @@ class WorkerProcess {
     private function shutdown_signal_handler(int $signo): void
     {
         fwrite(STDOUT, "--> Worker shutdown signal handler " . $signo . PHP_EOL);
-        $this->shutdown = true;
+        $this->shouldRun = false;
     }
 
     private function checkParent(): void
@@ -43,17 +43,16 @@ class WorkerProcess {
     {
         $this->ppid = posix_getppid();
         $this->worker->start($config);
-        while (true) { // worker loop
+        fwrite(STDOUT, "--> Starting Worker loop" . PHP_EOL);
+        while ($this->shouldRun) {
             //$this->testCycle(); // BREAKME to test zombie reaping
             //$this->cycle($arg);
             // run a cycle of business logic
             $this->worker->cycle();
             $this->checkParent();
             pcntl_signal_dispatch();
-            if ($this->shutdown) {
-                fwrite(STDOUT, "--> Worker shutdown requested, exiting" . PHP_EOL);
-                exit(self::EXIT_SUCCESS);
-            }
         }
+        fwrite(STDOUT, "--> Worker shutdown requested, exiting" . PHP_EOL);
+        exit(self::EXIT_SUCCESS);
     }
 }
