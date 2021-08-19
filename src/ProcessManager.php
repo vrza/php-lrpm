@@ -14,6 +14,7 @@ class ProcessManager implements MessageHandler
     private $secondsBetweenConfigPolls = 30; // TODO configuration
     private $secondsBetweenProcessStatePolls = 1;
 
+    private $signalHandlers;
     private $workersMetadata;
     private $configurationSource;
     private $messageServer;
@@ -23,15 +24,13 @@ class ProcessManager implements MessageHandler
 
     public function __construct(ConfigurationSource $configurationSource)
     {
+        fwrite(STDERR, "lrpm starting" . PHP_EOL);
         $this->configurationSource = $configurationSource;
         $this->workersMetadata = new WorkerMetadata();
-        pcntl_signal(SIGCHLD, function (int $signo, $_siginfo) {
-            fwrite(STDOUT, "==> Caught SIGCHLD" . PHP_EOL);
-            $this->sigchld_handler($signo);
-        });
-
         $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
         $this->messageServer =  new UnixSocketStreamServer($file, $this);
+        fwrite(STDERR, "Registering signal handlers" . PHP_EOL);
+        $this->installSignalHandlers();
     }
 
     public function handleMessage(string $msg): string
@@ -56,27 +55,59 @@ class ProcessManager implements MessageHandler
         }
     }
 
+    private function installSignalHandlers(): void
+    {
+        $this->signalHandlers = [
+            SIGCHLD => function (int $signo, $_siginfo) {
+                fwrite(STDERR, "==> lrpm caught SIGCHLD" . PHP_EOL);
+                $this->sigchld_handler($signo);
+            },
+            SIGTERM => function (int $signo, $_siginfo) {
+                fwrite(STDERR, "==> lrpm caught SIGTERM ($signo), initiating LRPM shutdown" . PHP_EOL);
+                $this->shouldRun = false;
+            },
+            SIGINT => function (int $signo, $_siginfo) {
+                fwrite(STDERR, "==> lrpm caught SIGINT ($signo), initiating LRPM shutdown" . PHP_EOL);
+                $this->shouldRun = false;
+            }
+        ];
+
+        foreach ($this->signalHandlers as $signal => $handler) {
+            pcntl_signal($signal, $handler);
+        }
+    }
+
     private function sigchld_handler(int $signo): void
     {
-        fwrite(STDOUT, "==> SIGCHLD handler handling signal " . $signo . PHP_EOL);
+        fwrite(STDOUT, "==> lrpm SIGCHLD handler handling signal " . $signo . PHP_EOL);
         $this->reapAndRespawn();
     }
 
     private function startProcess($id): void
     {
         $job = $this->workersMetadata->getJobById($id);
+        $signals = array_keys($this->signalHandlers);
+        pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
-            fwrite(STDOUT, '--> Child process starting' . PHP_EOL);
+            $childPid = getmypid();
+            fwrite(STDOUT, "--> Child process $childPid starting" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process $childPid setting default signal handlers" . PHP_EOL);
+            foreach ($this->signalHandlers as $signal => $_handler) {
+                pcntl_signal($signal, SIG_DFL);
+            }
             $workerClassName = $job['config']['workerClass'];
+            fwrite(STDOUT, "--> Child process $childPid initializing Worker" . PHP_EOL);
             $worker = new $workerClassName();
             $workerProcess = new WorkerProcess($worker);
+            pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             $workerProcess->work($job['config']);
-            fwrite(STDOUT, '--> Child process exiting' . PHP_EOL);
+            fwrite(STDOUT, "--> Child process $childPid exiting" . PHP_EOL);
             exit(self::EXIT_SUCCESS);
         } elseif ($pid > 0) { // parent process
-            fwrite(STDOUT, '==> Forked a child with PID ' . $pid . PHP_EOL);
             $this->workersMetadata->updateStartedJob($id, $pid);
+            pcntl_sigprocmask(SIG_UNBLOCK, $signals);
+            fwrite(STDOUT, '==> Forked a child with PID ' . $pid . PHP_EOL);
         } else {
             fwrite(STDERR, '==> Error forking child process: ' . $pid . PHP_EOL);
         }
@@ -104,7 +135,7 @@ class ProcessManager implements MessageHandler
         foreach ($this->workersMetadata->stopping as $id => $v) {
             $elapsed = time() - $v['time'];
             if ($elapsed >= $timeout) {
-                fwrite(STDOUT,"id $id with PID {$v['pid']} stopping for $elapsed seconds, sending SIGKILL" . PHP_EOL);
+                fwrite(STDERR,"id $id with PID {$v['pid']} stopping for $elapsed seconds, sending SIGKILL" . PHP_EOL);
                 posix_kill($v['pid'], SIGKILL);
             }
         }
@@ -152,8 +183,10 @@ class ProcessManager implements MessageHandler
 
     public function run(): void
     {
+        fwrite(STDOUT, "Starting control message listener service" . PHP_EOL);
         $this->messageServer->listen();
-        // process manager main loop
+
+        fwrite(STDOUT, "Entering lrpm main loop" . PHP_EOL);
         while ($this->shouldRun) {
             $this->pollConfigurationSourceForChanges();
 
@@ -189,7 +222,18 @@ class ProcessManager implements MessageHandler
             pcntl_signal_dispatch();
         }
 
-        fwrite(STDERR, "Clean shutdown." . PHP_EOL);
+        fwrite(STDOUT, "Entering lrpm shutdown loop" . PHP_EOL);
+        while (count($pids = $this->workersMetadata->getAllPids()) > 0) {
+            $ids = $this->workersMetadata->getJobIdsByPids($pids);
+            foreach ($ids as $id) {
+                $this->stopProcess($id);
+            }
+            $this->checkStoppingProcesses();
+            sleep($this->secondsBetweenProcessStatePolls);
+            pcntl_signal_dispatch();
+        }
+
+        fwrite(STDOUT, "lrpm shut down cleanly" . PHP_EOL);
     }
 
 }
