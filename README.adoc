@@ -85,7 +85,7 @@ Mandatory: yes
 
 ===== shortRunTimeSeconds
 
-Minimum number of seconds a process is expected to run; if the process terminates earlier then this number, it will be restarted with backoff
+Minimum number of seconds a process is expected to run; if the process terminates earlier then this, it will be restarted with backoff
 
 Mandatory: no +
 Default value: 5
