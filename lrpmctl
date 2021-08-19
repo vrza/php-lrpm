@@ -10,20 +10,48 @@ const EXIT_AUTOLOADER_NOT_FOUND = 2;
 const EXIT_NO_CONNECTION = 3;
 const EXIT_INVALID_RESPONSE = 4;
 
-if ($argc < 2) {
-    fwrite(STDERR, "Usage: ${argv[0]} <command>" . PHP_EOL);
+// parse arguments
+$shortopts = 'h';
+$longopts = [
+    'help',
+    'color::'
+];
+$options = getopt($shortopts, $longopts, $rest_index);
+$progname = basename($argv[0]);
+$helpmsg = "Usage: $progname [<options>]
+Options:
+  -h, --help         display this help and exit
+  --color[=<when>]   use colored output (always/never/auto)
+";
+if (array_key_exists('h', $options) || array_key_exists('help', $options)) {
+    fwrite(STDERR, $helpmsg);
     exit(EXIT_USAGE);
 }
-$request = implode(' ', array_slice($argv, 1));
+
+$arg = $options['color'] ?? null;
+if (!is_null($arg) && !in_array($arg, [false, 'auto', 'always', 'never'])) {
+    fwrite(STDERR, $helpmsg);
+    exit(EXIT_USAGE);
+}
+$color = $arg === 'always' || $arg === false ? true
+       : ($arg === 'never' ? false
+       : posix_isatty(STDOUT));
+
+$rest = array_slice($argv, $rest_index);
+if (count($rest) < 1) {
+    fwrite(STDERR, $helpmsg);
+    exit(EXIT_USAGE);
+}
+$request = implode(' ', $rest);
 if (empty($request)) {
     exit(EXIT_SUCCESS);
 }
 
-probeForAutoloader($argv[0]);
+probeForAutoloader($progname);
 
 use TIPC\UnixSocketStreamClient;
-use PrettyPrint\Table;
-use PrettyPrint\AnsiSeq;
+use TextTableFormatter\Table;
+use TerminalPalette\AnsiSeq;
 
 $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
 $client = new UnixSocketStreamClient($file);
@@ -38,7 +66,7 @@ if (($response = $client->receiveMessage()) === false) {
 }
 $client->disconnect();
 
-if ($response) handleResponse($request, $response);
+if ($response) handleResponse($request, $response, $color);
 
 
 function probeForAutoloader($programName): void
@@ -65,10 +93,11 @@ function exitNoConnection(): void
     exit(EXIT_NO_CONNECTION);
 }
 
-function handleResponse(string $msg, string $response): void
+function handleResponse(string $msg, string $response, bool $color): void
 {
-    if ($msg === 'status') {
-        statusResponseHandler($response);
+    $args = explode(' ', $msg);
+    if ($args[0] === 'status') {
+        statusResponseHandler($response, $color);
     } else {
         genericResponseHandler($response);
     }
@@ -79,7 +108,7 @@ function genericResponseHandler(string $response): void
     fwrite(STDOUT, $response . PHP_EOL);
 }
 
-function statusResponseHandler(string $response): void
+function statusResponseHandler(string $response, bool $color): void
 {
     try {
         $status = parseStatus($response);
@@ -88,7 +117,7 @@ function statusResponseHandler(string $response): void
         exit(EXIT_INVALID_RESPONSE);
     }
     $ps = ps(pidsFromStatus($status), ['rss']);
-    fwrite(STDOUT, renderStatusTable($status, $ps)->__toString());
+    fwrite(STDOUT, renderStatusTable($status, $ps, $color)->__toString());
 }
 
 /**
@@ -130,20 +159,20 @@ function pidsFromStatus($status): array
     return $pids;
 }
 
-function renderStatusTable(iterable $status, iterable $ps): Table
+function renderStatusTable(iterable $status, iterable $ps, bool $color): Table
 {
     $header = [
-        AnsiSeq::addIfTty('BOLD') . 'ID'     . AnsiSeq::addIfTty('RESET'),
-        AnsiSeq::addIfTty('BOLD') . 'PID'    . AnsiSeq::addIfTty('RESET'),
-        AnsiSeq::addIfTty('BOLD') . 'RSS'    . AnsiSeq::addIfTty('RESET'),
-        AnsiSeq::addIfTty('BOLD') . 'UPTIME' . AnsiSeq::addIfTty('RESET'),
-        AnsiSeq::addIfTty('BOLD') . 'START'  . AnsiSeq::addIfTty('RESET'),
-        AnsiSeq::addIfTty('BOLD') . 'NAME'   . AnsiSeq::addIfTty('RESET')
+        AnsiSeq::get('BOLD', $color) . 'ID'     . AnsiSeq::get('RESET', $color),
+        AnsiSeq::get('BOLD', $color) . 'PID'    . AnsiSeq::get('RESET', $color),
+        AnsiSeq::get('BOLD', $color) . 'RSS'    . AnsiSeq::get('RESET', $color),
+        AnsiSeq::get('BOLD', $color) . 'UPTIME' . AnsiSeq::get('RESET', $color),
+        AnsiSeq::get('BOLD', $color) . 'START'  . AnsiSeq::get('RESET', $color),
+        AnsiSeq::get('BOLD', $color) . 'NAME'   . AnsiSeq::get('RESET', $color)
     ];
     $align = ['l', 'r', 'r', 'r', 'l', 'l'];
     $output = [$header];
-    $redNone = AnsiSeq::addIfTty('RED') . 'none' . AnsiSeq::addIfTty('RESET');
-    $redNotAvailable = AnsiSeq::addIfTty('RED') . 'n/a' . AnsiSeq::addIfTty('RESET');
+    $redNone = AnsiSeq::get('RED', $color) . 'none' . AnsiSeq::get('RESET', $color);
+    $redNotAvailable = AnsiSeq::get('RED', $color) . 'n/a' . AnsiSeq::get('RESET', $color);
 
     foreach ($status as $id => $metadata) {
         $config = $metadata['config'];
@@ -152,7 +181,7 @@ function renderStatusTable(iterable $status, iterable $ps): Table
         $startedAt = $state['startedAt'];
         $pid = $state['pid'] ?? null;
         if ($pid !== null && isset($ps[$pid])) {
-            $pidFmt = AnsiSeq::addIfTty('GREEN') . $pid . AnsiSeq::addIfTty('RESET');
+            $pidFmt = AnsiSeq::get('GREEN', $color) . $pid . AnsiSeq::get('RESET', $color);
             $rssFmt = $ps[$pid]['rss'];
             $startedAtDateTime = new DateTime();
             $startedAtDateTime->setTimestamp($startedAt);
