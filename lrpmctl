@@ -55,7 +55,7 @@ if (empty($request)) {
 probeForAutoloader($progname);
 
 use TIPC\UnixSocketStreamClient;
-use PrettyPrint\Table;
+use TextTableFormatter\Table;
 use TerminalPalette\AnsiSeq;
 
 $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';

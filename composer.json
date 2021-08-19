@@ -20,7 +20,7 @@
         },
         {
             "type": "vcs",
-            "url": "https://github.com/vrza/php-pretty-print"
+            "url": "https://github.com/vrza/text-table-formatter"
         },
         {
             "type": "vcs",
@@ -35,7 +35,7 @@
         "vrza/array-with-secondary-keys": "dev-main",
         "vrza/cardinal-collections": "dev-main",
         "vrza/php-tipc": "dev-main",
-        "vrza/php-pretty-print": "dev-main",
+        "vrza/text-table-formatter": "dev-main",
         "vrza/terminal-palette": "dev-main"
     },
     "autoload": {
