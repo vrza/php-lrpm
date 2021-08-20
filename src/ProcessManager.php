@@ -11,6 +11,8 @@ class ProcessManager implements MessageHandler
 {
     private const EXIT_SUCCESS = 0;
 
+    private const MAIN_PROC_TAG = '[lrpm main]';
+
     private $configPollIntervalSeconds;
     private $secondsBetweenProcessStatePolls = 1;
 
@@ -80,8 +82,27 @@ class ProcessManager implements MessageHandler
 
     private function sigchld_handler(int $signo): void
     {
-        fwrite(STDOUT, "==> lrpm SIGCHLD handler handling signal " . $signo . PHP_EOL);
+        fwrite(STDOUT, "==> lrpm SIGCHLD handler handling signal $signo" . PHP_EOL);
         $this->reapAndRespawn();
+    }
+
+    private static function setMainProcessTitle(): void
+    {
+        cli_set_process_title(
+            'php ' . implode(' ', $_SERVER['argv'])
+            . ' ' . self::MAIN_PROC_TAG
+        );
+    }
+
+    private static function setChildProcessTitle($id): void
+    {
+        cli_set_process_title(
+            preg_replace(
+                '/' . preg_quote(self::MAIN_PROC_TAG) . '$/',
+                "[lrpm child $id]",
+                cli_get_process_title()
+            )
+        );
     }
 
     private function startProcess($id): void
@@ -91,6 +112,7 @@ class ProcessManager implements MessageHandler
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
+            self::setChildProcessTitle($id);
             $childPid = getmypid();
             fwrite(STDOUT, "--> Child process for job $id with PID $childPid starting" . PHP_EOL);
             fwrite(STDOUT, "--> Child process for job $id with PID $childPid setting default signal handlers" . PHP_EOL);
@@ -103,7 +125,7 @@ class ProcessManager implements MessageHandler
             $workerProcess = new WorkerProcess($worker);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             $workerProcess->work($job['config']);
-            fwrite(STDOUT, "--> Child process for job $id with PID $childPid exiting" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process for job $id with PID $childPid exiting cleanly" . PHP_EOL);
             exit(self::EXIT_SUCCESS);
         } elseif ($pid > 0) { // parent process
             $this->workersMetadata->updateStartedJob($id, $pid);
@@ -236,6 +258,8 @@ class ProcessManager implements MessageHandler
 
     public function run(): void
     {
+        self::setMainProcessTitle();
+
         fwrite(STDOUT, "Starting control message listener service" . PHP_EOL);
         $this->messageServer->listen();
 
