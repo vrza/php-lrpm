@@ -154,7 +154,7 @@ class ProcessManager implements MessageHandler
     private function pollConfigurationSourceForChanges(): void
     {
         if ($this->timeOfLastConfigPoll + $this->configPollIntervalSeconds <= time()) {
-            $this->timeOfLastConfigPoll = time(); // TODO wait a full cycle even when db is not reachable
+            $this->timeOfLastConfigPoll = time();
             try {
                 $unvalidatedNewWorkers = $this->configurationSource->loadConfiguration();
                 $newWorkers = ConfigurationValidator::filter($unvalidatedNewWorkers);
