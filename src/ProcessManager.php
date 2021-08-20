@@ -148,7 +148,7 @@ class ProcessManager implements MessageHandler
         $reapResults = ProcessUtilities::reapAnyChildren();
         $pids = array_keys($reapResults);
         $exited = $this->workersMetadata->scheduleRestartOfTerminatedProcesses($pids);
-        fwrite(STDOUT, "==> Jobs terminated: " . implode(',', $exited) . PHP_EOL);
+        fwrite(STDOUT, "==> Jobs terminated: " . implode(', ', $exited) . PHP_EOL);
     }
 
     private function pollConfigurationSourceForChanges(): void
