@@ -11,6 +11,8 @@ class ProcessManager implements MessageHandler
 {
     private const EXIT_SUCCESS = 0;
 
+    private const MAIN_PROC_TAG = '[lrpm main]';
+
     private $configPollIntervalSeconds;
     private $secondsBetweenProcessStatePolls = 1;
 
@@ -80,8 +82,27 @@ class ProcessManager implements MessageHandler
 
     private function sigchld_handler(int $signo): void
     {
-        fwrite(STDOUT, "==> lrpm SIGCHLD handler handling signal " . $signo . PHP_EOL);
+        fwrite(STDOUT, "==> lrpm SIGCHLD handler handling signal $signo" . PHP_EOL);
         $this->reapAndRespawn();
+    }
+
+    private static function setMainProcessTitle(): void
+    {
+        cli_set_process_title(
+            'php ' . implode(' ', $_SERVER['argv'])
+            . ' ' . self::MAIN_PROC_TAG
+        );
+    }
+
+    private static function setChildProcessTitle($id): void
+    {
+        cli_set_process_title(
+            preg_replace(
+                '/' . preg_quote(self::MAIN_PROC_TAG) . '$/',
+                "[lrpm child $id]",
+                cli_get_process_title()
+            )
+        );
     }
 
     private function startProcess($id): void
@@ -91,26 +112,27 @@ class ProcessManager implements MessageHandler
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
+            self::setChildProcessTitle($id);
             $childPid = getmypid();
-            fwrite(STDOUT, "--> Child process $childPid starting" . PHP_EOL);
-            fwrite(STDOUT, "--> Child process $childPid setting default signal handlers" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process for job $id with PID $childPid starting" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process for job $id with PID $childPid setting default signal handlers" . PHP_EOL);
             foreach ($this->signalHandlers as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }
             $workerClassName = $job['config']['workerClass'];
-            fwrite(STDOUT, "--> Child process $childPid initializing Worker" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process for job $id with PID $childPid initializing Worker" . PHP_EOL);
             $worker = new $workerClassName();
             $workerProcess = new WorkerProcess($worker);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             $workerProcess->work($job['config']);
-            fwrite(STDOUT, "--> Child process $childPid exiting" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process for job $id with PID $childPid exiting cleanly" . PHP_EOL);
             exit(self::EXIT_SUCCESS);
         } elseif ($pid > 0) { // parent process
             $this->workersMetadata->updateStartedJob($id, $pid);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
-            fwrite(STDOUT, '==> Forked a child with PID ' . $pid . PHP_EOL);
+            fwrite(STDOUT, "==> Forked a child for job $id with PID $pid" . PHP_EOL);
         } else {
-            fwrite(STDERR, '==> Error forking child process: ' . $pid . PHP_EOL);
+            fwrite(STDERR, "==> Error forking a child for job $id: $pid" . PHP_EOL);
         }
     }
 
@@ -148,13 +170,13 @@ class ProcessManager implements MessageHandler
         $reapResults = ProcessUtilities::reapAnyChildren();
         $pids = array_keys($reapResults);
         $exited = $this->workersMetadata->scheduleRestartOfTerminatedProcesses($pids);
-        fwrite(STDOUT, "==> Jobs terminated: " . implode(',', $exited) . PHP_EOL);
+        fwrite(STDOUT, "==> Jobs terminated: " . implode(', ', $exited) . PHP_EOL);
     }
 
     private function pollConfigurationSourceForChanges(): void
     {
         if ($this->timeOfLastConfigPoll + $this->configPollIntervalSeconds <= time()) {
-            $this->timeOfLastConfigPoll = time(); // TODO wait a full cycle even when db is not reachable
+            $this->timeOfLastConfigPoll = time();
             try {
                 $unvalidatedNewWorkers = $this->configurationSource->loadConfiguration();
                 $newWorkers = ConfigurationValidator::filter($unvalidatedNewWorkers);
@@ -183,41 +205,73 @@ class ProcessManager implements MessageHandler
         }
     }
 
+    private function processRestarts(): void
+    {
+        if (count($this->workersMetadata->restart) > 0) {
+            fwrite(STDOUT,
+                   '==> Need to restart '
+                   . count($this->workersMetadata->restart)
+                   . ' processes: '
+                   . implode(', ', $this->workersMetadata->restart->asArray())
+                   . PHP_EOL
+            );
+        }
+        foreach ($this->workersMetadata->restart as $id) {
+            $this->stopProcess($id);
+            $this->workersMetadata->restart->remove($id);
+        }
+    }
+
+    private function processStops(): void
+    {
+        if (count($this->workersMetadata->stop) > 0) {
+            fwrite(STDOUT,
+                   '==> Need to stop '
+                   . count($this->workersMetadata->stop)
+                   . ' processes: '
+                   . implode(', ', $this->workersMetadata->stop->asArray())
+                   . PHP_EOL
+            );
+        }
+        foreach ($this->workersMetadata->stop as $id) {
+            $this->stopProcess($id);
+            $this->workersMetadata->stop->remove($id);
+        }
+    }
+
+    private function processStarts(): void
+    {
+        if (count($this->workersMetadata->start) > 0) {
+            fwrite(STDOUT,
+                   '==> Need to start '
+                   . count($this->workersMetadata->start)
+                   . ' processes: '
+                   . implode(', ', $this->workersMetadata->start->asArray())
+                   . PHP_EOL
+            );
+        }
+        foreach ($this->workersMetadata->start as $id) {
+            $this->startProcess($id);
+            $this->workersMetadata->start->remove($id);
+        }
+    }
+
     public function run(): void
     {
+        self::setMainProcessTitle();
+
         fwrite(STDOUT, "Starting control message listener service" . PHP_EOL);
         $this->messageServer->listen();
 
         fwrite(STDOUT, "Entering lrpm main loop" . PHP_EOL);
         while ($this->shouldRun) {
             $this->pollConfigurationSourceForChanges();
-
-            if (count($this->workersMetadata->restart) > 0) {
-                fwrite(STDOUT,'==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
-            }
-            foreach ($this->workersMetadata->restart as $id) {
-                $this->stopProcess($id);
-                $this->workersMetadata->restart->remove($id);
-            }
-            if (count($this->workersMetadata->stop) > 0) {
-                fwrite(STDOUT, '==> Need to stop ' . count($this->workersMetadata->stop) . ' processes' . PHP_EOL);
-            }
-            foreach ($this->workersMetadata->stop as $id) {
-                $this->stopProcess($id);
-                $this->workersMetadata->stop->remove($id);
-            }
-            if (count($this->workersMetadata->start) > 0) {
-                fwrite(STDOUT, '==> Need to start ' . count($this->workersMetadata->start) . ' processes' . PHP_EOL);
-            }
-            foreach ($this->workersMetadata->start as $id) {
-                $this->startProcess($id);
-                $this->workersMetadata->start->remove($id);
-            }
-
+            $this->workersMetadata->slateScheduledRestarts();
+            $this->processRestarts();
+            $this->processStops();
+            $this->processStarts();
             $this->checkStoppingProcesses();
-
             $this->messageServer->checkMessages();
-
             // sleep might get interrupted by a SIGCHLD,
             // so we make sure signal handlers run right after
             sleep($this->secondsBetweenProcessStatePolls);
@@ -231,6 +285,7 @@ class ProcessManager implements MessageHandler
                 $this->stopProcess($id);
             }
             $this->checkStoppingProcesses();
+            $this->messageServer->checkMessages();
             sleep($this->secondsBetweenProcessStatePolls);
             pcntl_signal_dispatch();
         }
