@@ -12,7 +12,7 @@ use CardinalCollections\Mutable\Set;
  *     'state' => [
  *         'pid' => (int)
  *         'restartAt' => (int)
- *         'backoffInterval' => (int) //1, 2, 4, 8 ...
+ *         'backoffInterval' => (int) // 1, 2, 4, 8 ...
  *         'dbState',  // ADDED | REMOVED | UNCHANGED since last poll
  *         'lastExitCode'
  *     ]
@@ -254,22 +254,28 @@ class WorkerMetadata {
         }
     }
 
+    public function slateScheduledRestarts(): void
+    {
+        foreach ($this->metadata as $id => $job) {
+            if ($job['state']['dbState'] != self::REMOVED
+                && empty($job['state']['pid'])
+                && !empty($job['state']['restartAt']) && $job['state']['restartAt'] < time()
+            ) {
+                fwrite(STDOUT, date('c', time()) . " Job $id restart time reached, slating start" . PHP_EOL);
+                $this->start->add($id);
+            }
+        }
+    }
+
     public function slateJobStateUpdates(): void
     {
         foreach ($this->metadata as $id => $job) {
             switch($job['state']['dbState']) {
                 case self::UNCHANGED:
-                    // for all UNCHANGED jobs
-                    // - check if they need to be restarted:
-                    // - if their PID == null AND their restartAt < now(), slate for start
-                    //fwrite(STDOUT, "Job $id is UNCHANGED" . PHP_EOL);
-                    if (empty($job['state']['pid']) && !empty($job['state']['restartAt']) && $job['state']['restartAt'] < time()) {
-                        fwrite(STDOUT, date('c', time()) . " Job $id restart time reached, slating start" . PHP_EOL);
-                        $this->start->add($id);
-                    }
+                    // Do nothing, restarts are handled in next step by slateScheduledRestarts
                     break;
                 case self::REMOVED:
-                    //for all REMOVED jobs, slate for shutdown if they have a PID
+                    // for all REMOVED jobs, slate for shutdown if they have a PID
                     fwrite(STDOUT, "job $id is REMOVED" . PHP_EOL);
                     if (!empty($job['state']['pid'])) {
                         fwrite(STDOUT, "Slating job " . $id . " with pid " . $job['state']['pid'] . " for shutdown" . PHP_EOL);
@@ -282,14 +288,11 @@ class WorkerMetadata {
                     $this->start->add($id);
                     break;
                 case self::UPDATED:
-                    // for all UPDATED jobs, slate for restart if job is running, slate for start if not running
+                    // for all UPDATED jobs, slate for restart if job is running
                     fwrite(STDOUT, "Job $id is UPDATED" . PHP_EOL);
                     if (!empty($job['state']['pid'])) {
                         fwrite(STDOUT, "Slating job " . $id . " with pid " . $job['state']['pid'] . " for restart" . PHP_EOL);
                         $this->restart->add($id);
-                    } else {
-                        fwrite(STDOUT, "Job $id is not running, slating start" . PHP_EOL);
-                        $this->start->add($id);
                     }
                     break;
                 default:

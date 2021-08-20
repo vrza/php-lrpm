@@ -191,6 +191,7 @@ class ProcessManager implements MessageHandler
         fwrite(STDOUT, "Entering lrpm main loop" . PHP_EOL);
         while ($this->shouldRun) {
             $this->pollConfigurationSourceForChanges();
+            $this->workersMetadata->slateScheduledRestarts();
 
             if (count($this->workersMetadata->restart) > 0) {
                 fwrite(STDOUT,'==> Need to restart ' . count($this->workersMetadata->restart) . ' processes' . PHP_EOL);
