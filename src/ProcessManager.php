@@ -232,6 +232,7 @@ class ProcessManager implements MessageHandler
                 $this->stopProcess($id);
             }
             $this->checkStoppingProcesses();
+            $this->messageServer->checkMessages();
             sleep($this->secondsBetweenProcessStatePolls);
             pcntl_signal_dispatch();
         }
