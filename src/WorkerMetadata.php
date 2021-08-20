@@ -207,13 +207,13 @@ class WorkerMetadata {
 
     public function updateJob($id, array $config)
     {
-        $job = $this->getJobById($id);
         fwrite(STDOUT, "Setting fresh config for job $id" . PHP_EOL);
+        $job = $this->getJobById($id);
         $job['config'] = $config;
-        $job['state']['cfState'] = self::UPDATED;
         $job['state']['restartAt'] = time();
         fwrite(STDOUT, "Resetting backoff for job $id" . PHP_EOL);
         $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
+        $job['state']['cfState'] = self::UPDATED;
         $this->metadata->put($id, $job);
         return $id;
     }
@@ -221,12 +221,11 @@ class WorkerMetadata {
     public function addNewJob($id, array $config)
     {
         fwrite(STDOUT, "Adding new job $id" . PHP_EOL);
-        fwrite(STDOUT, "Resetting backoff for job $id" . PHP_EOL);
-        $metadata = $this->has($id) ? $this->metadata->get($id) : [];
-        $metadata['config'] = $config;
-        $metadata['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
-        $metadata['state']['cfState'] = self::ADDED;
-        $this->metadata->put($id, $metadata);
+        $job = [];
+        $job['config'] = $config;
+        $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
+        $job['state']['cfState'] = self::ADDED;
+        $this->metadata->put($id, $job);
         return $id;
     }
 
