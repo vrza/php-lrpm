@@ -8,12 +8,12 @@ use CardinalCollections\Mutable\Set;
 
 /*
  * $id => [
- *     'config' => []; // user defined
+ *     'config' => []; // user-defined Worker config
  *     'state' => [
  *         'pid' => (int)
  *         'restartAt' => (int)
  *         'backoffInterval' => (int) // 1, 2, 4, 8 ...
- *         'cfState',  // ADDED | REMOVED | UNCHANGED since last poll
+ *         'cfState',  // ADDED | REMOVED | UNCHANGED since last config poll
  *         'lastExitCode'
  *     ]
  * ]
@@ -101,9 +101,9 @@ class WorkerMetadata {
             if ($job['state']['backoffInterval'] > self::MAX_BACKOFF) {
                 $job['state']['backoffInterval'] = self::MAX_BACKOFF;
             }
-            fwrite(STDOUT, "Job $id run time was too short, backing off for seconds: " . $job['state']['backoffInterval'] . PHP_EOL);
+            fwrite(STDOUT, "Job $id run time was too short, backing off for seconds: {$job['state']['backoffInterval']}" . PHP_EOL);
         } else {
-            fwrite(STDOUT, "Job $id run time was longer than " . $job['config']['shortRunTimeSeconds'] . " seconds, resetting backoff" . PHP_EOL);
+            fwrite(STDOUT, "Job $id run time was longer than {$job['config']['shortRunTimeSeconds']} seconds, resetting backoff" . PHP_EOL);
             $job['state']['restartAt'] = $now;
             $job['state']['backoffInterval'] = self::DEFAULT_BACKOFF;
         }
@@ -154,7 +154,7 @@ class WorkerMetadata {
     public function getJobIdByPid(int $pid)
     {
         if (empty($pid) || !is_int($pid) || $pid < 1) {
-            throw new InvalidArgumentException("PID must be a positive integer");
+            throw new InvalidArgumentException("Process ID must be a positive integer");
         }
         return $this->metadata->getPrimaryKeyByIndex(self::PID_KEY, $pid);
     }
@@ -176,7 +176,7 @@ class WorkerMetadata {
     {
         $job = $this->getJobById($id);
         if (!empty($job['state']['pid'])) {
-            fwrite(STDOUT, "Marking job " . $id . " with pid " . $job['state']['pid'] . " as stopping" . PHP_EOL);
+            fwrite(STDOUT, "Marking job $id with pid {$job['state']['pid']} as stopping" . PHP_EOL);
             $this->stopping[$id]['pid'] = $job['state']['pid'];
             $this->stopping[$id]['time'] = time();
         } else {
@@ -245,24 +245,11 @@ class WorkerMetadata {
         foreach ($this->metadata as $id => $metadata) {
             if ($metadata['state']['cfState'] == self::REMOVED) {
                 if (!empty($metadata['state']['pid'])) {
-                    fwrite(STDERR, "Not purging job $id, it is still running with PID" . $metadata['state']['pid'] . PHP_EOL);
+                    fwrite(STDERR, "Not purging job $id, it is still running with PID {$metadata['state']['pid']}" . PHP_EOL);
                 } else {
                     fwrite(STDOUT, "Purging job $id" . PHP_EOL);
                     $this->metadata->remove($id);
                 }
-            }
-        }
-    }
-
-    public function slateScheduledRestarts(): void
-    {
-        foreach ($this->metadata as $id => $job) {
-            if ($job['state']['cfState'] != self::REMOVED
-                && empty($job['state']['pid'])
-                && !empty($job['state']['restartAt']) && $job['state']['restartAt'] < time()
-            ) {
-                fwrite(STDOUT, date('c', time()) . " Job $id restart time reached, slating start" . PHP_EOL);
-                $this->start->add($id);
             }
         }
     }
@@ -278,7 +265,7 @@ class WorkerMetadata {
                     // for all REMOVED jobs, slate for shutdown if they have a PID
                     fwrite(STDOUT, "job $id is REMOVED" . PHP_EOL);
                     if (!empty($job['state']['pid'])) {
-                        fwrite(STDOUT, "Slating job " . $id . " with pid " . $job['state']['pid'] . " for shutdown" . PHP_EOL);
+                        fwrite(STDOUT, "Slating job $id with pid {$job['state']['pid']} for shutdown" . PHP_EOL);
                         $this->stop->add($id);
                     }
                     break;
@@ -291,12 +278,25 @@ class WorkerMetadata {
                     // for all UPDATED jobs, slate for restart if job is running
                     fwrite(STDOUT, "Job $id is UPDATED" . PHP_EOL);
                     if (!empty($job['state']['pid'])) {
-                        fwrite(STDOUT, "Slating job " . $id . " with pid " . $job['state']['pid'] . " for restart" . PHP_EOL);
+                        fwrite(STDOUT, "Slating job $id with pid {$job['state']['pid']} for restart" . PHP_EOL);
                         $this->restart->add($id);
                     }
                     break;
                 default:
-                    fwrite(STDERR, "Job $id has invalid cfState " . $job['state']['cfState'] . PHP_EOL);
+                    fwrite(STDERR, "Job $id has invalid cfState {$job['state']['cfState']}" . PHP_EOL);
+            }
+        }
+    }
+
+    public function slateScheduledRestarts(): void
+    {
+        foreach ($this->metadata as $id => $job) {
+            if ($job['state']['cfState'] != self::REMOVED
+                && empty($job['state']['pid'])
+                && !empty($job['state']['restartAt']) && $job['state']['restartAt'] < time()
+            ) {
+                fwrite(STDOUT, date('c', time()) . " Job $id restart time reached, slating start" . PHP_EOL);
+                $this->start->add($id);
             }
         }
     }
