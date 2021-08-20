@@ -205,7 +205,7 @@ class ProcessManager implements MessageHandler
         }
     }
 
-    private function processRestarts(): void
+    private function initiateRestarts(): void
     {
         if (count($this->workersMetadata->restart) > 0) {
             fwrite(STDOUT,
@@ -222,7 +222,7 @@ class ProcessManager implements MessageHandler
         }
     }
 
-    private function processStops(): void
+    private function initiateStops(): void
     {
         if (count($this->workersMetadata->stop) > 0) {
             fwrite(STDOUT,
@@ -239,7 +239,7 @@ class ProcessManager implements MessageHandler
         }
     }
 
-    private function processStarts(): void
+    private function initiateStarts(): void
     {
         if (count($this->workersMetadata->start) > 0) {
             fwrite(STDOUT,
@@ -267,9 +267,9 @@ class ProcessManager implements MessageHandler
         while ($this->shouldRun) {
             $this->pollConfigurationSourceForChanges();
             $this->workersMetadata->slateScheduledRestarts();
-            $this->processRestarts();
-            $this->processStops();
-            $this->processStarts();
+            $this->initiateRestarts();
+            $this->initiateStops();
+            $this->initiateStarts();
             $this->checkStoppingProcesses();
             $this->messageServer->checkMessages();
             // sleep might get interrupted by a SIGCHLD,
