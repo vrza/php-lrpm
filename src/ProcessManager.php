@@ -283,11 +283,13 @@ class ProcessManager implements MessageHandler
         }
 
         fwrite(STDOUT, '==> Entering lrpm shutdown loop' . PHP_EOL);
-        while (count($pids = $this->workersMetadata->getAllPids()) > 0) {
-            $ids = $this->workersMetadata->getJobIdsByPids($pids);
-            foreach ($ids as $id) {
-                $this->stopProcess($id);
-            }
+        fwrite(STDOUT, '==> Initiating shutdown of all child processes' . PHP_EOL);
+        $pids = $this->workersMetadata->getAllPids();
+        foreach ($this->workersMetadata->getJobIdsByPids($pids) as $id) {
+            $this->stopProcess($id);
+        }
+        fwrite(STDOUT, '==> Waiting for all child processes to terminate' . PHP_EOL);
+        while (count($this->workersMetadata->getAllPids()) > 0) {
             $this->checkStoppingProcesses();
             $this->messageServer->checkMessages();
             sleep($this->secondsBetweenProcessStatePolls);
