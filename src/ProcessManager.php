@@ -26,13 +26,13 @@ class ProcessManager implements MessageHandler
 
     public function __construct(ConfigurationSource $configurationSource, int $configPollIntervalSeconds = 30)
     {
-        fwrite(STDERR, "lrpm starting" . PHP_EOL);
+        fwrite(STDERR, "==> lrpm starting" . PHP_EOL);
         $this->configurationSource = $configurationSource;
         $this->configPollIntervalSeconds = $configPollIntervalSeconds;
         $this->workersMetadata = new WorkerMetadata();
         $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
         $this->messageServer =  new UnixSocketStreamServer($file, $this);
-        fwrite(STDERR, "Registering signal handlers" . PHP_EOL);
+        fwrite(STDERR, "==> Registering signal handlers" . PHP_EOL);
         $this->installSignalHandlers();
     }
 
@@ -174,7 +174,7 @@ class ProcessManager implements MessageHandler
         $reapResults = ProcessUtilities::reapAnyChildren();
         $pids = array_keys($reapResults);
         $exited = $this->workersMetadata->scheduleRestartOfTerminatedProcesses($pids);
-        fwrite(STDOUT, "==> Jobs terminated: " . implode(', ', $exited) . PHP_EOL);
+        fwrite(STDOUT, '==> Jobs terminated: ' . implode(', ', $exited) . PHP_EOL);
     }
 
     private function pollConfigurationSourceForChanges(): void
@@ -204,7 +204,7 @@ class ProcessManager implements MessageHandler
                 }
                 $this->workersMetadata->slateJobStateUpdates();
             } catch (Exception $e) {
-                fwrite(STDERR, "Error getting jobs configuration" . PHP_EOL);
+                fwrite(STDERR, 'Error getting configuration' . PHP_EOL);
             }
         }
     }
@@ -264,10 +264,10 @@ class ProcessManager implements MessageHandler
     {
         self::setMainProcessTitle();
 
-        fwrite(STDOUT, "Starting control message listener service" . PHP_EOL);
+        fwrite(STDOUT, '==> Starting control message listener service' . PHP_EOL);
         $this->messageServer->listen();
 
-        fwrite(STDOUT, "Entering lrpm main loop" . PHP_EOL);
+        fwrite(STDOUT, '==> Entering lrpm main loop' . PHP_EOL);
         while ($this->shouldRun) {
             $this->pollConfigurationSourceForChanges();
             $this->workersMetadata->slateScheduledRestarts();
@@ -282,7 +282,7 @@ class ProcessManager implements MessageHandler
             pcntl_signal_dispatch();
         }
 
-        fwrite(STDOUT, "Entering lrpm shutdown loop" . PHP_EOL);
+        fwrite(STDOUT, '==> Entering lrpm shutdown loop' . PHP_EOL);
         while (count($pids = $this->workersMetadata->getAllPids()) > 0) {
             $ids = $this->workersMetadata->getJobIdsByPids($pids);
             foreach ($ids as $id) {
@@ -294,7 +294,7 @@ class ProcessManager implements MessageHandler
             pcntl_signal_dispatch();
         }
 
-        fwrite(STDOUT, "lrpm shut down cleanly" . PHP_EOL);
+        fwrite(STDOUT, '==> lrpm shut down cleanly' . PHP_EOL);
     }
 
 }
