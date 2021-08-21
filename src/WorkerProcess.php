@@ -45,9 +45,6 @@ class WorkerProcess {
         $this->worker->start($config);
         fwrite(STDOUT, "--> Starting Worker loop" . PHP_EOL);
         while ($this->shouldRun) {
-            //$this->testCycle(); // BREAKME to test zombie reaping
-            //$this->cycle($arg);
-            // run a cycle of business logic
             $this->worker->cycle();
             $this->checkParent();
             pcntl_signal_dispatch();
