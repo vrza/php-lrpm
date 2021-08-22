@@ -5,10 +5,10 @@ declare(strict_types=1);
 error_reporting(E_ALL);
 
 const EXIT_SUCCESS = 0;
-const EXIT_USAGE = 1;
-const EXIT_AUTOLOADER_NOT_FOUND = 2;
-const EXIT_NO_CONNECTION = 3;
-const EXIT_INVALID_RESPONSE = 4;
+const EXIT_USAGE = 64;
+const EXIT_AUTOLOADER_NOT_FOUND = 1;
+const EXIT_NO_CONNECTION = 69;
+const EXIT_INVALID_RESPONSE = 76;
 
 // parse arguments
 $shortopts = 'h';
