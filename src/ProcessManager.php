@@ -4,6 +4,8 @@ namespace PHPLRPM;
 
 use Exception;
 
+use CardinalCollections\Mutable\Map;
+
 use TIPC\MessageHandler;
 use TIPC\UnixSocketStreamServer;
 
@@ -87,7 +89,7 @@ class ProcessManager implements MessageHandler
     private function sigchld_handler(int $signo): void
     {
         fwrite(STDOUT, "==> lrpm SIGCHLD handler handling signal $signo" . PHP_EOL);
-        $this->reapAndRespawn();
+        $this->reapAndUpdateMetadata();
     }
 
     private static function setMainProcessTitle(): void
@@ -169,12 +171,13 @@ class ProcessManager implements MessageHandler
         }
     }
 
-    private function reapAndRespawn(): void
+    private function reapAndUpdateMetadata(): void
     {
-        $reapResults = ProcessUtilities::reapAnyChildren();
-        $pids = array_keys($reapResults);
-        $exited = $this->workersMetadata->scheduleRestartOfTerminatedProcesses($pids);
-        fwrite(STDOUT, '==> Jobs terminated: ' . implode(', ', $exited) . PHP_EOL);
+        $pidsToExitCodes = new Map(ProcessUtilities::reapAnyChildren());
+        $pidsToJobIds = $pidsToExitCodes->map(function ($pid, $exitCode) {
+            return [$pid, $this->workersMetadata->updateForTerminatedProcess($pid, $exitCode)];
+        });
+        fwrite(STDOUT, '==> Jobs terminated: ' . implode(', ', $pidsToJobIds->values()) . PHP_EOL);
     }
 
     private function pollConfigurationSourceForChanges(): void

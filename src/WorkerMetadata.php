@@ -70,14 +70,10 @@ class WorkerMetadata {
         return $this->metadata->updateSecondaryKey(self::PID_KEY, $pid, null);
     }
 
-    public function scheduleRestartOfTerminatedProcesses(array $pids): array
-    {
-        return array_map(function ($pid) { return $this->scheduleRestartOfTerminatedProcess($pid); }, $pids);
-    }
-
-    private function scheduleRestartOfTerminatedProcess(int $pid)
+    public function updateForTerminatedProcess(int $pid, int $exitCode)
     {
         $id = $this->metadata->getPrimaryKeyByIndex(self::PID_KEY, $pid);
+        $this->metadata->put("$id.state.lastExitCode", $exitCode);
         $this->scheduleRestartWithBackoff($id);
         $this->unmarkAsStopping($id);
         return $this->removePid($pid);
