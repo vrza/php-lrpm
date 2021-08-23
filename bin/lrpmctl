@@ -72,8 +72,8 @@ if ($response) handleResponse($request, $response, $color);
 function probeForAutoloader($programName): void
 {
     $autoload_locations = [
-        __DIR__ . '/vendor/autoload.php',
-        __DIR__ . '/../../autoload.php'
+        __DIR__ . '/../vendor/autoload.php',
+        __DIR__ . '/../../../autoload.php'
     ];
 
     foreach ($autoload_locations as $autoload_file) {
