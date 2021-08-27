@@ -43,8 +43,9 @@ class ProcessManager implements MessageHandler
         $help = 'valid messages:
   help                 description of valid messages
   status, jsonstatus   information about running worker processes
-  stop                 shut down lrpm and all worker processes
-  restart <job_id>     restart process with job id <job_id>';
+  restart <job_id>     restart process with job id <job_id>
+  reload               reload configuration
+  stop                 shut down lrpm and all worker processes';
         $args = explode(' ', $msg);
         switch ($args[0]) {
             case 'help':
@@ -59,6 +60,9 @@ class ProcessManager implements MessageHandler
                 return isset($args[1])
                     ? $this->workersMetadata->scheduleRestartOnDemand($args[1])
                     : 'lrpm: restart requires a job id argument';
+            case 'reload':
+                $this->timeOfLastConfigPoll = 0;
+                return 'Scheduled immediate configuration reload';
             default:
                 return "lrpm: '$msg' is not a valid message. $help";
         }
