@@ -18,10 +18,14 @@ $longopts = [
 ];
 $options = getopt($shortopts, $longopts, $rest_index);
 $progname = basename($argv[0]);
-$helpmsg = "Usage: $progname [<options>]
+$helpmsg = "Usage: $progname [<options>] <message>
+
 Options:
   -h, --help         display this help and exit
   --color[=<when>]   use colored output (always/never/auto)
+
+Send a 'help' message to a running lrpm instance to receive
+helpful information about messages it can respond to.
 ";
 if (array_key_exists('h', $options) || array_key_exists('help', $options)) {
     fwrite(STDERR, $helpmsg);
