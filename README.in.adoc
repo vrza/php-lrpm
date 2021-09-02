@@ -8,7 +8,7 @@ image::https://raw.githubusercontent.com/vrza/php-lrpm/main/lrpmctl.png[lrpmctl 
 
 Dynamic management of long running processes. Similar in function to process managers like daemontools or supervisord, but integrates with PHP code.
 
-LRPM periodically reloads configuration from a custom source implemented in PHP (e.g. from a database), checks for changes in configuration and start/stop processes accordingly.
+LRPM periodically reloads configuration from a custom source implemented in PHP (e.g. from a database), checks for changes in configuration and starts/stops processes accordingly.
 
 This https://youtu.be/MJkFHMOCEkg[talk by Giorgio Sironi] given at the Dutch PHP Conference in 2017 covers some of the problems and challenges when implementing long running PHP processes.
 
@@ -33,7 +33,7 @@ Currently LRPM is not intended to run as PID 1, nor was it tested in this role.
 == Usage
 
 1. Implement the `ConfigurationSource`. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers (see details below).
-2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the death of the LRPM supervisor process). Backoff should be implemented by the cycle() method -- be carefult not to run a tight loop at times where cycles are not doing actual work!
+2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the death of the LRPM supervisor process). Backoff should be implemented by the cycle() method -- be careful not to run a tight loop at times when cycles are not doing actual work!
 
 === Job configuration
 
@@ -73,7 +73,7 @@ Default SIGTERM and SIGINT handlers will terminate the Worker before the next lo
 
 It is recommended to run LRPM as a normal system service. Its main process stays in the foreground and logs to stdout and stderr.
 
-Symlink the `lrpmctl` tool to somewhere in your PATH and use it to query the running instance for status, or to restart a process on demand.
+Place the `bin/lrpmctl` tool into your PATH (either by adding `vendor/bin` to the PATH, or symlinking `lrpmctl` to e.g. `/usr/local/bin`) and use it to query the running instance for status, or to restart a process on demand.
 
 == Development roadmap
 
@@ -83,7 +83,7 @@ Symlink the `lrpmctl` tool to somewhere in your PATH and use it to query the run
 
 PHP-LRPM keeps metadata in an associative array. For efficient lookups by PID, a separate index is maintained.
 
-This functionality was offloaded to a generic library https://github.com/vrza/array-with-secondary-keys[Array with Secondary Keys], that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work). In turn, building specific collection inspired building https://github.com/vrza/cardinal-collections[Cardinal Collections], a PHP toolkit for building collections.
+This functionality was offloaded to a generic library https://github.com/vrza/array-with-secondary-keys[Array with Secondary Keys], that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work). Implementing this particular collection lead to creation of https://github.com/vrza/cardinal-collections[Cardinal Collections], a PHP toolkit for building collections.
 
 ==== Implement receiving, handling and responding to control messages
 
