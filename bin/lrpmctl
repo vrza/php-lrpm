@@ -57,8 +57,8 @@ use TIPC\UnixSocketStreamClient;
 use TextTableFormatter\Table;
 use TerminalPalette\AnsiSeq;
 
-$file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
-$client = new UnixSocketStreamClient($file);
+$socket = findLrpmUnixSocket();
+$client = new UnixSocketStreamClient($socket);
 if ($client->connect() === false) {
     exitNoConnection();
 }
@@ -75,14 +75,14 @@ if ($response) handleResponse($request, $response, $color);
 
 function probeForAutoloader($programName): void
 {
-    $autoload_locations = [
+    $autoloadLocations = [
         __DIR__ . '/../vendor/autoload.php',
         __DIR__ . '/../../../autoload.php'
     ];
 
-    foreach ($autoload_locations as $autoload_file) {
-        if (file_exists($autoload_file)) {
-            require_once($autoload_file);
+    foreach ($autoloadLocations as $autoloadFile) {
+        if (file_exists($autoloadFile)) {
+            require_once($autoloadFile);
             return;
         }
     }
@@ -91,9 +91,35 @@ function probeForAutoloader($programName): void
     exit(EXIT_AUTOLOADER_NOT_FOUND);
 }
 
+function findLrpmUnixSocket()
+{
+    $socketDirs = [
+        '/run/php-lrpm',
+        '/run/user/' . posix_geteuid() . '/php-lrpm'
+    ];
+    $socketFileName = 'socket';
+    foreach ($socketDirs as $dir) {
+        $candidate = $dir . '/' . $socketFileName;
+        if (is_writable($candidate)) {
+            return $candidate;
+        }
+    }
+    fwrite(STDERR, "Could not find lrpm Unix domain socket" . PHP_EOL);
+    fwrite(
+        STDERR,
+        "Tried: " . implode(
+            ', ',
+            array_map(function ($dir) use ($socketFileName) {
+                return $dir . '/' . $socketFileName;
+            }, $socketDirs)
+        ) . PHP_EOL
+    );
+    exitNoConnection();
+}
+
 function exitNoConnection(): void
 {
-    fwrite(STDERR, 'lrpm is not running' . PHP_EOL);
+    fwrite(STDERR, 'Could not connect to lrpm' . PHP_EOL);
     exit(EXIT_NO_CONNECTION);
 }
 
@@ -204,7 +230,7 @@ function renderStatusTable(iterable $status, iterable $ps, bool $color): Table
     return (new Table($output))->setAlignment($align);
 }
 
-function ps(iterable $pids, iterable $format): array
+function ps(array $pids, array $format): array
 {
     if (count($pids) === 0 || count($format) === 0) {
         return [];

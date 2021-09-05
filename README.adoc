@@ -110,6 +110,8 @@ Default SIGTERM and SIGINT handlers will terminate the Worker before the next lo
 
 It is recommended to run LRPM as a normal system service. Its main process stays in the foreground and logs to stdout and stderr.
 
+For LRPM to be able to listen for control messages, it needs to create a Unix domain socket in the `/run/php-lrpm` directory -- make sure that this directory is writable by the main LRPM process. As a fallback, LRPM will attempt to create a socket in `/run/user/<euid>/php-lrpm`. If a socket cannot be created, messaging will be disabled.
+
 Place the `bin/lrpmctl` tool into your PATH (either by adding `vendor/bin` to the PATH, or symlinking `lrpmctl` to e.g. `/usr/local/bin`) and use it to query the running instance for status, or to restart a process on demand.
 
 == Development roadmap

@@ -6,10 +6,7 @@ use Exception;
 
 use CardinalCollections\Mutable\Map;
 
-use TIPC\MessageHandler;
-use TIPC\UnixSocketStreamServer;
-
-class ProcessManager implements MessageHandler
+class ProcessManager
 {
     private const EXIT_SUCCESS = 0;
 
@@ -21,7 +18,7 @@ class ProcessManager implements MessageHandler
     private $signalHandlers;
     private $workersMetadata;
     private $configurationSource;
-    private $messageServer;
+    private $controlMessageHandler;
 
     private $timeOfLastConfigPoll = 0;
     private $shouldRun = true;
@@ -32,40 +29,29 @@ class ProcessManager implements MessageHandler
         $this->configurationSource = $configurationSource;
         $this->configPollIntervalSeconds = $configPollIntervalSeconds;
         $this->workersMetadata = new WorkerMetadata();
-        $file = '/run/user/' . posix_geteuid() . '/php-lrpm/socket';
-        $this->messageServer =  new UnixSocketStreamServer($file, $this);
+        $this->controlMessageHandler = new ControlMessageHandler($this);
         fwrite(STDERR, "==> Registering signal handlers" . PHP_EOL);
         $this->installSignalHandlers();
     }
 
-    public function handleMessage(string $msg): string
+    public function shutdown(): void
     {
-        $help = 'valid messages:
-  help                 description of valid messages
-  status, jsonstatus   information about running worker processes
-  restart <job_id>     restart process with job id <job_id>
-  reload               reload configuration
-  stop                 shut down lrpm and all worker processes';
-        $args = explode(' ', $msg);
-        switch ($args[0]) {
-            case 'help':
-                return "lrpm: $help";
-            case 'jsonstatus':
-            case 'status':
-                return json_encode($this->workersMetadata->getAll());
-            case 'stop':
-                $this->shouldRun = false;
-                return 'lrpm: Shutting down process manager';
-            case 'restart':
-                return isset($args[1])
-                    ? $this->workersMetadata->scheduleRestartOnDemand($args[1])
-                    : 'lrpm: restart requires a job id argument';
-            case 'reload':
-                $this->timeOfLastConfigPoll = 0;
-                return 'Scheduled immediate configuration reload';
-            default:
-                return "lrpm: '$msg' is not a valid message. $help";
-        }
+        $this->shouldRun = false;
+    }
+
+    public function getStatus(): array
+    {
+        return $this->workersMetadata->getAll();
+    }
+
+    public function scheduleConfigReload(): void
+    {
+        $this->timeOfLastConfigPoll = 0;
+    }
+
+    public function scheduleRestartOnDemand($jobId): string
+    {
+        return $this->workersMetadata->scheduleRestartOnDemand($jobId);
     }
 
     private function installSignalHandlers(): void
@@ -77,11 +63,11 @@ class ProcessManager implements MessageHandler
             },
             SIGTERM => function (int $signo, $_siginfo) {
                 fwrite(STDERR, "==> lrpm caught SIGTERM ($signo), initiating LRPM shutdown" . PHP_EOL);
-                $this->shouldRun = false;
+                $this->shutdown();
             },
             SIGINT => function (int $signo, $_siginfo) {
                 fwrite(STDERR, "==> lrpm caught SIGINT ($signo), initiating LRPM shutdown" . PHP_EOL);
-                $this->shouldRun = false;
+                $this->shutdown();
             }
         ];
 
@@ -270,9 +256,7 @@ class ProcessManager implements MessageHandler
     public function run(): void
     {
         self::setMainProcessTitle();
-
-        fwrite(STDOUT, '==> Starting control message listener service' . PHP_EOL);
-        $this->messageServer->listen();
+        $this->controlMessageHandler->startMessageListener();
 
         fwrite(STDOUT, '==> Entering lrpm main loop' . PHP_EOL);
         while ($this->shouldRun) {
@@ -282,7 +266,7 @@ class ProcessManager implements MessageHandler
             $this->initiateStops();
             $this->initiateStarts();
             $this->checkStoppingProcesses();
-            $this->messageServer->checkMessages();
+            $this->controlMessageHandler->checkMessages();
             // sleep might get interrupted by a SIGCHLD,
             // so we make sure signal handlers run right after
             sleep($this->secondsBetweenProcessStatePolls);
@@ -298,7 +282,7 @@ class ProcessManager implements MessageHandler
         fwrite(STDOUT, '==> Waiting for all child processes to terminate' . PHP_EOL);
         while (count($this->workersMetadata->getAllPids()) > 0) {
             $this->checkStoppingProcesses();
-            $this->messageServer->checkMessages();
+            $this->controlMessageHandler->checkMessages();
             sleep($this->secondsBetweenProcessStatePolls);
             pcntl_signal_dispatch();
         }
