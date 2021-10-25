@@ -86,7 +86,6 @@ class ControlMessageHandler implements MessageHandler
     private function ensureWritableDir(array $candidateDirs)
     {
         foreach ($candidateDirs as $candidateDir) {
-
             if (file_exists($candidateDir)) {
                 if (is_dir($candidateDir) && is_writable($candidateDir)) {
                     return $candidateDir;
