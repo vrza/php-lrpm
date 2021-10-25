@@ -80,6 +80,16 @@ class ControlMessageHandler implements MessageHandler
     }
 
     /**
+     * Try to find a writable directory from a list of candidates,
+     * possibly creating a new directory if possible.
+     *
+     * We are intentionally suppressing errors when attempting to create
+     * directories, regardless of the reason (file exists,
+     * insufficient permissions...), as this is not a critical failure.
+     *
+     * Returns path to a writeable directory, or false if o writeable
+     * directory is not available.
+     *
      * @param array $candidateDirs
      * @return string|false
      */
