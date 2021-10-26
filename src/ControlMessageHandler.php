@@ -96,17 +96,13 @@ class ControlMessageHandler implements MessageHandler
     private function ensureWritableDir(array $candidateDirs)
     {
         foreach ($candidateDirs as $candidateDir) {
-            if (file_exists($candidateDir)) {
-                if (is_dir($candidateDir) && is_writable($candidateDir)) {
-                    return $candidateDir;
-                }
-            } else {
+            if (!file_exists($candidateDir)) {
                 set_error_handler(function () {});
                 @mkdir($candidateDir, 0700, true);
                 restore_error_handler();
-                if (is_dir($candidateDir) && is_writable($candidateDir)) {
-                    return $candidateDir;
-                }
+            }
+            if (is_dir($candidateDir) && is_writable($candidateDir)) {
+                return $candidateDir;
             }
         }
         return false;
