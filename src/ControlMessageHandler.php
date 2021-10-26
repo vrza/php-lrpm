@@ -104,7 +104,7 @@ class ControlMessageHandler implements MessageHandler
                 set_error_handler(function () {});
                 @mkdir($candidateDir, 0700, true);
                 restore_error_handler();
-                if (file_exists($candidateDir) && is_dir($candidateDir) && is_writable($candidateDir)) {
+                if (is_dir($candidateDir) && is_writable($candidateDir)) {
                     return $candidateDir;
                 }
             }
