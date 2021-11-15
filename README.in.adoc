@@ -22,7 +22,17 @@ PHP-LRPM is built on top of POSIX process management facilities. PHP-LRPM starts
 
 The operating system signals PHP-LRPM immediately when a process terminates. PHP-LRPM will in turn attempt to restart the terminated process.
 
+PHP-LRPM is able to take advantage of the OPcache PHP extension, allowing worker processes to store compiled bytecode in shared memory, which reduces the total memory usage of the process farm.
+
+On Linux systems, PHP-LRPM is also able to take advantage of the fact that the `fork(2)` system call is implemented through the use of copy-on-write pages. This reduces the memory usage of Linux deployments even further.
+
 === Flexible
+
+PHP-LRPM makes minimal assumptions about its use cases. It assumes no more than:
+
+1. that worker processes will need to be provided with some sort of configuration
+2. that they will need to run some code when they are started
+3. that after initialization they might want to run in an endless loop.
 
 PHP-LRPM uses exponential backoff when attempting to restart a process; some process managers will try several times in quick succession and fail the process until operator intervention.
 
@@ -69,13 +79,27 @@ You can implement and install your own signal handlers inside your Worker implem
 
 Default SIGTERM and SIGINT handlers will terminate the Worker before the next loop cycle.
 
+=== Misc caveats
+
+Be aware that code in your `ConfigurationSource` class will run in the supervisor (parent) process, while your `Worker` classes will run in child processes.
+
+Sharing open sockets between parent and children through `fork(2)` is not safe. Worker processes should connect to wherever they need to connect to only after they have been spawned. For example, opening sockets in `ConfigurationSource`, in the parent process, passing them via references in the configuration associative array, and then using them in Worker processes is inherently unsafe.
+
 == Operating LRPM
 
 It is recommended to run LRPM as a normal system service. Its main process stays in the foreground and logs to stdout and stderr.
 
-For LRPM to be able to listen for control messages, it needs to create a Unix domain socket in the `/run/php-lrpm` directory -- make sure that this directory is writable by the main LRPM process. As a fallback, LRPM will attempt to create a socket in `/run/user/<euid>/php-lrpm`. If a socket cannot be created, messaging will be disabled.
+For LRPM to be able to listen for control messages, it needs to create a Unix domain socket in the `/run/php-lrpm` directory -- make sure that this directory is writable by the main LRPM process. As a fallback, LRPM will attempt to create a socket in `/run/user/<euid>/php-lrpm`. If a socket cannot be created, LRPM wil run with control messaging disabled.
 
-Place the `bin/lrpmctl` tool into your PATH (either by adding `vendor/bin` to the PATH, or symlinking `lrpmctl` to e.g. `/usr/local/bin`) and use it to query the running instance for status, or to restart a process on demand.
+Place the `bin/lrpmctl` tool into your PATH (either by adding `vendor/bin` to the PATH, or symlinking `lrpmctl` to e.g. `/usr/local/bin`) and use it to query the running instance for status, or to restart a process on demand. Type `lrpmctl -h` for more detailed usage instructions.
+
+To take advantege of caching precompiled bytecode in shared memory, you need to explicitly enable using the OPcache extension in the CLI SAPI, and make sure that it's configured to store the cache in shared memory. Minimal recommended config is:
+
+----
+opcache.enable=1
+opcache.enable_cli=1
+opcache.file_cache_only=0
+----
 
 == Development roadmap
 
