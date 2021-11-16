@@ -105,6 +105,7 @@ class ProcessManager
     {
         $job = $this->workersMetadata->getJobById($id);
         $signals = array_keys($this->signalHandlers);
+        flush();
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
