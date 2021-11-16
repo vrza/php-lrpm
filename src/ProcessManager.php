@@ -109,18 +109,17 @@ class ProcessManager
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
-            self::setChildProcessTitle($id);
             $childPid = getmypid();
-            fwrite(STDOUT, "--> Child process for job $id with PID $childPid starting" . PHP_EOL);
-            fwrite(STDOUT, "--> Child process for job $id with PID $childPid setting default signal handlers" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process for job $id with PID $childPid forked" . PHP_EOL);
             foreach ($this->signalHandlers as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }
             $workerClassName = $job['config']['workerClass'];
-            fwrite(STDOUT, "--> Child process for job $id with PID $childPid initializing Worker" . PHP_EOL);
+            fwrite(STDOUT, "--> Child process for job $id with PID $childPid initializing Worker $workerClassName" . PHP_EOL);
             $worker = new $workerClassName();
             $workerProcess = new WorkerProcess($worker);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
+            self::setChildProcessTitle($id);
             $workerProcess->work($job['config']);
             fwrite(STDOUT, "--> Child process for job $id with PID $childPid exiting cleanly" . PHP_EOL);
             exit(self::EXIT_SUCCESS);
