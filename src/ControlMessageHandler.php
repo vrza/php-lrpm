@@ -67,7 +67,7 @@ class ControlMessageHandler implements MessageHandler
             '/run/php-lrpm',
             '/run/user/' . posix_geteuid() . '/php-lrpm'
         ];
-        $socketFileName = 'socket';
+        $socketFileName = 'control';
         if (($socketDir = $this->ensureWritableDir($socketDirs)) !== false) {
             fwrite(STDERR, "==> Unix domain socket for control messages: $socketDir" . PHP_EOL);
             $socketPath = $socketDir . '/' . $socketFileName;

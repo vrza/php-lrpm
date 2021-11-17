@@ -97,7 +97,7 @@ function findLrpmUnixSocket()
         '/run/php-lrpm',
         '/run/user/' . posix_geteuid() . '/php-lrpm'
     ];
-    $socketFileName = 'socket';
+    $socketFileName = 'control';
     foreach ($socketDirs as $dir) {
         $candidate = $dir . '/' . $socketFileName;
         if (is_writable($candidate)) {
