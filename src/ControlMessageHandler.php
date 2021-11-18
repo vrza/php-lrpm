@@ -24,6 +24,13 @@ class ControlMessageHandler implements MessageHandler
         }
     }
 
+    public function stopMessageListener(): void
+    {
+        if (!is_null($this->messageServer)) {
+            $this->messageServer->close();
+        }
+    }
+
     public function checkMessages(): void
     {
         if (!is_null($this->messageServer)) {

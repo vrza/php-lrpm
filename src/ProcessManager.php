@@ -109,11 +109,12 @@ class ProcessManager
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
-            $childPid = getmypid();
-            fwrite(STDOUT, "--> Child process for job $id with PID $childPid forked" . PHP_EOL);
+            $this->controlMessageHandler->stopMessageListener();
+            $this->controlMessageHandler = null;
             foreach ($this->signalHandlers as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }
+            $childPid = getmypid();
             $workerClassName = $job['config']['workerClass'];
             fwrite(STDOUT, "--> Child process for job $id with PID $childPid initializing Worker $workerClassName" . PHP_EOL);
             $worker = new $workerClassName();
