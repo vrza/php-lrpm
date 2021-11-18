@@ -10,7 +10,7 @@ class ProcessManager
 {
     private const EXIT_SUCCESS = 0;
 
-    private const MAIN_PROC_TAG = '[lrpm main]';
+    private const SUPERVISOR_PROCESS_TAG = '[lrpm supervisor]';
 
     private $configPollIntervalSeconds;
     private $secondsBetweenProcessStatePolls = 1;
@@ -82,11 +82,11 @@ class ProcessManager
         $this->reapAndUpdateMetadata();
     }
 
-    private static function setMainProcessTitle(): void
+    private static function setSupervisorProcessTitle(): void
     {
         cli_set_process_title(
             'php ' . implode(' ', $_SERVER['argv'])
-            . ' ' . self::MAIN_PROC_TAG
+            . ' ' . self::SUPERVISOR_PROCESS_TAG
         );
     }
 
@@ -94,7 +94,7 @@ class ProcessManager
     {
         cli_set_process_title(
             preg_replace(
-                '/' . preg_quote(self::MAIN_PROC_TAG) . '$/',
+                '/' . preg_quote(self::SUPERVISOR_PROCESS_TAG) . '$/',
                 "[lrpm child $id]",
                 cli_get_process_title()
             )
@@ -256,7 +256,7 @@ class ProcessManager
 
     public function run(): void
     {
-        self::setMainProcessTitle();
+        self::setSupervisorProcessTitle();
         $this->controlMessageHandler->startMessageListener();
 
         fwrite(STDOUT, '==> Entering lrpm main loop' . PHP_EOL);
