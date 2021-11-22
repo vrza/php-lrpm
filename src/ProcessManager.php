@@ -118,11 +118,17 @@ class ProcessManager
             throw new ConfigurationPollException("Could not connect to socket {$this->configSocket}");
         }
         if ($client->sendMessage('config') === false) {
+            $client->disconnect();
             throw new ConfigurationPollException("Could not send config query message over socket {$this->configSocket}");
         }
+        $signals = array_keys($this->signalHandlers);
+        pcntl_sigprocmask(SIG_BLOCK, $signals);
         if (($response = $client->receiveMessage()) === false ) {
+            pcntl_sigprocmask(SIG_UNBLOCK, $signals);
+            $client->disconnect();
             throw new ConfigurationPollException("Failed to read config response from {$this->configSocket}");
         }
+        pcntl_sigprocmask(SIG_UNBLOCK, $signals);
         $client->disconnect();
         if ($response === ConfigurationService::RESP_ERROR_CONFIG_SOURCE) {
             throw new ConfigurationPollException("Config process at {$this->configSocket} responded with an error message");
