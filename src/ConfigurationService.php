@@ -9,6 +9,8 @@ class ConfigurationService implements MessageHandler
 {
     private const EXIT_NO_SOCKET = 69;
 
+    public const RESP_ERROR_CONFIG_SOURCE = 'error_polling_config_source';
+
     private $messageServer;
     private $configurationSource;
 
@@ -42,8 +44,13 @@ class ConfigurationService implements MessageHandler
 
     public function handleMessage(string $msg): string
     {
-        $config = $this->configurationSource->loadConfiguration();
-        return Serialization::serialize($config);
+        $config = self::RESP_ERROR_CONFIG_SOURCE;
+        try {
+            $config = $this->configurationSource->loadConfiguration();
+        } catch (Exception $e) {
+            fwrite(STDERR, '==> Error loading configuration from source: ' . $e->getMessage() . PHP_EOL);
+        }
+        return $config === self::RESP_ERROR_CONFIG_SOURCE ? $config : Serialization::serialize($config);
     }
 
     private function initializeMessageServer()

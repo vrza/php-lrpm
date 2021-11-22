@@ -17,6 +17,7 @@ class ProcessManager
 
     private const CONFIG_TIME_INIT = 0;
     private const CONFIG_TIME_SIGHUP = 1;
+    private const CONFIG_PROCESS_MAX_BACKOFF_SECONDS = 300;
 
     private $shouldRun = true;
     private $signalHandlers;
@@ -26,6 +27,7 @@ class ProcessManager
     private $configSocket;
     private $configProcessId;
     private $timeOfLastConfigPoll = self::CONFIG_TIME_INIT;
+    private $configProcessStarts = 0;
 
     private $workersMetadata;
     private $secondsBetweenProcessStatePolls = 1;
@@ -112,10 +114,19 @@ class ProcessManager
     {
         $recvBufSize = 8 * 1024 * 1024;
         $client = new UnixSocketStreamClient($this->configSocket, $recvBufSize);
-        $client->connect();
-        $client->sendMessage('config');
-        $response = $client->receiveMessage();
+        if ($client->connect() === false) {
+            throw new ConfigurationPollException("Could not connect to socket {$this->configSocket}");
+        }
+        if ($client->sendMessage('config') === false) {
+            throw new ConfigurationPollException("Could not send config query message over socket {$this->configSocket}");
+        }
+        if (($response = $client->receiveMessage()) === false ) {
+            throw new ConfigurationPollException("Failed to read config response from {$this->configSocket}");
+        }
         $client->disconnect();
+        if ($response === ConfigurationService::RESP_ERROR_CONFIG_SOURCE) {
+            throw new ConfigurationPollException("Config process at {$this->configSocket} responded with an error message");
+        }
         return Serialization::deserialize($response);
     }
 
@@ -149,7 +160,8 @@ class ProcessManager
             }
         } elseif ($pid > 0) { // parent process
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
-            fwrite(STDERR, "==> Forked config process with PID $pid" . PHP_EOL);
+            $this->configProcessId = $pid;
+            fwrite(STDERR, "==> Forked config process with PID: $pid" . PHP_EOL);
             fwrite(STDERR, "==> Waiting for config service to let us know it's ready" . PHP_EOL);
             $timeout = 60;
             $remaining = sleep($timeout);
@@ -161,9 +173,8 @@ class ProcessManager
             if (is_null($this->configSocket)) {
                 throw new RuntimeException("lrpm supervisor could not find config process Unix domain socket");
             }
-            $this->configProcessId = $pid;
         } else {
-            fwrite(STDERR, "==> Error forking configuration process: $pid" . PHP_EOL);
+            throw new RuntimeException("Error forking configuration process: $pid");
         }
     }
 
@@ -250,10 +261,6 @@ class ProcessManager
             fwrite(STDERR, '==> Config process with PID ' . $this->configProcessId . ' terminated' . PHP_EOL);
             $pidsToExitCodes->remove($this->configProcessId);
             $this->configProcessId = null;
-            if ($this->shouldRun) {
-                fwrite(STDERR, '==> Attempting to restart config process' . PHP_EOL);
-                $this->startConfigurationProcess();
-            }
         }
 
         if ($pidsToExitCodes->nonEmpty()) {
@@ -291,7 +298,7 @@ class ProcessManager
                 }
                 $this->workersMetadata->slateJobStateUpdates();
             } catch (Exception $e) {
-                fwrite(STDERR, 'Error getting configuration' . PHP_EOL);
+                fwrite(STDERR, 'Error getting configuration: ' . $e->getMessage() . PHP_EOL);
             }
         }
     }
@@ -350,11 +357,15 @@ class ProcessManager
     public function run(): void
     {
         self::setSupervisorProcessTitle();
-        $this->startConfigurationProcess();
         $this->controlMessageHandler->startMessageListener();
 
         fwrite(STDOUT, '==> Entering lrpm main loop' . PHP_EOL);
         while ($this->shouldRun) {
+            if (is_null($this->configProcessId)) {
+                sleep(min(2 * $this->configProcessStarts++, self::CONFIG_PROCESS_MAX_BACKOFF_SECONDS));
+                $this->startConfigurationProcess();
+                continue;
+            }
             $this->pollConfigurationSourceForChanges();
             $this->workersMetadata->slateScheduledRestarts();
             $this->initiateRestarts();
