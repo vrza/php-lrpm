@@ -160,9 +160,7 @@ class ProcessManager
                     fwrite(STDERR, "--> Parent PID changed, config process exiting" . PHP_EOL);
                     exit(self::EXIT_PPID_CHANGED);
                 }
-                $configurationService->checkMessages();
-                flush();
-                time_nanosleep(0, 100 * 1000 * 1000);
+                $configurationService->checkMessages(0, 100);
             }
         } elseif ($pid > 0) { // parent process
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
@@ -230,7 +228,7 @@ class ProcessManager
         }
     }
 
-    private function stopProcess($id): bool
+    private function stopWorkerProcess($id): bool
     {
         $job = $this->workersMetadata->getJobById($id);
         if (empty($job['state']['pid'])) {
@@ -321,7 +319,7 @@ class ProcessManager
             );
         }
         foreach ($this->workersMetadata->restart as $id) {
-            $this->stopProcess($id);
+            $this->stopWorkerProcess($id);
             $this->workersMetadata->restart->remove($id);
         }
     }
@@ -338,7 +336,7 @@ class ProcessManager
             );
         }
         foreach ($this->workersMetadata->stop as $id) {
-            $this->stopProcess($id);
+            $this->stopWorkerProcess($id);
             $this->workersMetadata->stop->remove($id);
         }
     }
@@ -378,10 +376,7 @@ class ProcessManager
             $this->initiateStops();
             $this->initiateStarts();
             $this->checkStoppingProcesses();
-            $this->controlMessageHandler->checkMessages();
-            // sleep might get interrupted by a SIGCHLD,
-            // so we make sure signal handlers run right after
-            sleep($this->secondsBetweenProcessStatePolls);
+            $this->controlMessageHandler->checkMessages($this->secondsBetweenProcessStatePolls);
             pcntl_signal_dispatch();
         }
 
@@ -391,13 +386,12 @@ class ProcessManager
         fwrite(STDOUT, '==> Initiating shutdown of all worker processes' . PHP_EOL);
         $pids = $this->workersMetadata->getAllPids();
         foreach ($this->workersMetadata->getJobIdsByPids($pids) as $id) {
-            $this->stopProcess($id);
+            $this->stopWorkerProcess($id);
         }
         fwrite(STDOUT, '==> Waiting for all child processes to terminate' . PHP_EOL);
         while (count($this->workersMetadata->getAllPids()) > 0) {
             $this->checkStoppingProcesses();
-            $this->controlMessageHandler->checkMessages();
-            sleep($this->secondsBetweenProcessStatePolls);
+            $this->controlMessageHandler->checkMessages($this->secondsBetweenProcessStatePolls);
             pcntl_signal_dispatch();
         }
 

@@ -31,10 +31,10 @@ class ControlMessageHandler implements MessageHandler
         }
     }
 
-    public function checkMessages(): void
+    public function checkMessages(int $timeoutSeconds = 0, int $timeoutMicroseconds = 0): void
     {
         if (!is_null($this->messageServer)) {
-            $this->messageServer->checkMessages();
+            $this->messageServer->checkMessages($timeoutSeconds, $timeoutMicroseconds);
         }
     }
 

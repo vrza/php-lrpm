@@ -35,10 +35,10 @@ class ConfigurationService implements MessageHandler
         }
     }
 
-    public function checkMessages(): void
+    public function checkMessages($timeoutSeconds = 0, $timeoutMicroseconds = 0): void
     {
         if (!is_null($this->messageServer)) {
-            $this->messageServer->checkMessages();
+            $this->messageServer->checkMessages($timeoutSeconds, $timeoutMicroseconds);
         }
     }
 
