@@ -33,11 +33,12 @@
         "ext-json": "*",
         "ext-pcntl": "*",
         "ext-posix": "*",
+        "ext-sockets": "*",
         "vrza/array-with-secondary-keys": "dev-main",
         "vrza/cardinal-collections": "dev-main",
         "vrza/php-tipc": "dev-main",
-        "vrza/text-table-formatter": "dev-main",
-        "vrza/terminal-palette": "dev-main"
+        "vrza/terminal-palette": "dev-main",
+        "vrza/text-table-formatter": "dev-main"
     },
     "autoload": {
         "psr-4": {

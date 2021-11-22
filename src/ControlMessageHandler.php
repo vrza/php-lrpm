@@ -70,49 +70,12 @@ class ControlMessageHandler implements MessageHandler
 
     private function initializeMessageServer()
     {
-        $socketDirs = [
-            '/run/php-lrpm',
-            '/run/user/' . posix_geteuid() . '/php-lrpm'
-        ];
-        $socketFileName = 'control';
-        if (($socketDir = $this->ensureWritableDir($socketDirs)) !== false) {
-            fwrite(STDERR, "==> Unix domain socket for control messages: $socketDir" . PHP_EOL);
-            $socketPath = $socketDir . '/' . $socketFileName;
-            $this->messageServer = new UnixSocketStreamServer($socketPath, $this);
-        } else {
-            fwrite(STDERR, "Could not find a writable directory for Unix domain socket" . PHP_EOL);
-            fwrite(STDERR, "Ensure one of these is writable: " . implode(', ', $socketDirs) . PHP_EOL);
+        $socketPath = IPCUtilities::serverFindUnixSocket('control', IPCUtilities::getSocketDirs());
+        if (is_null($socketPath)) {
             fwrite(STDERR, "==> Control messages disabled" . PHP_EOL);
+        } else {
+            $this->messageServer = new UnixSocketStreamServer($socketPath, $this);
         }
-    }
-
-    /**
-     * Try to find a writable directory from a list of candidates,
-     * possibly creating a new directory if possible.
-     *
-     * We are intentionally suppressing errors when attempting to create
-     * directories, regardless of the reason (file exists,
-     * insufficient permissions...), as this is not a critical failure.
-     *
-     * Returns path to a writeable directory, or false if o writeable
-     * directory is not available.
-     *
-     * @param array $candidateDirs
-     * @return string|false
-     */
-    private function ensureWritableDir(array $candidateDirs)
-    {
-        foreach ($candidateDirs as $candidateDir) {
-            if (!file_exists($candidateDir)) {
-                set_error_handler(function () {});
-                @mkdir($candidateDir, 0700, true);
-                restore_error_handler();
-            }
-            if (is_dir($candidateDir) && is_writable($candidateDir)) {
-                return $candidateDir;
-            }
-        }
-        return false;
     }
 
 }
