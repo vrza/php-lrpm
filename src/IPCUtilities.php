@@ -12,18 +12,17 @@ class IPCUtilities
         ];
     }
 
-    public static function serverFindUnixSocket($socketFileName, $socketDirs): ?string
+    public static function serverFindUnixSocket(string $socketFileName, array $socketDirs): ?string
     {
-        if (($socketDir = self::ensureWritableDir($socketDirs)) !== false) {
-            return $socketDir . '/' . $socketFileName;
-        } else {
+        if (is_null($socketDir = self::ensureWritableDir($socketDirs))) {
             fwrite(STDERR, "Could not find a writable directory for $socketFileName Unix domain socket" . PHP_EOL);
             fwrite(STDERR, "Ensure one of these is writable: " . implode(', ', $socketDirs) . PHP_EOL);
             return null;
         }
+        return $socketDir . '/' . $socketFileName;
     }
 
-    public static function clientFindUnixSocket($socketFileName, $socketDirs): ?string
+    public static function clientFindUnixSocket(string $socketFileName, array $socketDirs): ?string
     {
         foreach ($socketDirs as $dir) {
             $candidate = $dir . '/' . $socketFileName;
@@ -58,7 +57,7 @@ class IPCUtilities
      * @param array $candidateDirs
      * @return string|false
      */
-    private static function ensureWritableDir(array $candidateDirs)
+    private static function ensureWritableDir(array $candidateDirs): ?string
     {
         foreach ($candidateDirs as $candidateDir) {
             if (!file_exists($candidateDir)) {
@@ -70,7 +69,7 @@ class IPCUtilities
                 return $candidateDir;
             }
         }
-        return false;
+        return null;
     }
 
 }
