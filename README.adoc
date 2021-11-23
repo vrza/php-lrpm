@@ -43,7 +43,7 @@ Currently LRPM is not intended to run as PID 1, nor was it tested in this role.
 == Usage
 
 1. Implement the `ConfigurationSource`. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers (see details below).
-2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the death of the LRPM supervisor process). Backoff should be implemented at the end the cycle() method, as we dispatch signal handlers at end of every cycle. Be careful not to run a tight loop at times when cycles are not doing actual work!
+2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the death of the LRPM supervisor process). Backoff should be implemented at the end of the cycle() method, as we dispatch signal handlers right after cycle() returns. Be careful not to run a tight loop at times when cycles are not doing actual work!
 
 === Job configuration
 
