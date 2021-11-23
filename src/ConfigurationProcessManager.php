@@ -7,7 +7,6 @@ use TIPC\UnixSocketStreamClient;
 
 class ConfigurationProcessManager
 {
-    private const EXIT_PPID_CHANGED = 2;
     private const CONFIG_PROCESS_MAX_BACKOFF_SECONDS = 300;
     private const CONFIG_PROCESS_MAX_RETRIES = 5;
     private const CONFIG_PROCESS_MIN_RUN_TIME_SECONDS = 5;
@@ -92,7 +91,7 @@ class ConfigurationProcessManager
                 $ppid = posix_getppid();
                 if ($ppid != $supervisorPid) {
                     fwrite(STDERR, "--> Parent PID changed, config process exiting" . PHP_EOL);
-                    exit(self::EXIT_PPID_CHANGED);
+                    exit(ExitCodes::EXIT_PPID_CHANGED);
                 }
                 $configurationService->checkMessages(0, 50000);
             }

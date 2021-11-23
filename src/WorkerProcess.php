@@ -3,9 +3,6 @@
 namespace PHPLRPM;
 
 class WorkerProcess {
-    private const EXIT_SUCCESS = 0;
-    private const EXIT_PPID_CHANGED = 2;
-
     private $worker;
 
     private $ppid = -1;
@@ -35,7 +32,7 @@ class WorkerProcess {
         $ppid = posix_getppid();
         if ($ppid != $this->ppid) {
             fwrite(STDERR, "--> Parent PID changed, worker process exiting" . PHP_EOL);
-            exit(self::EXIT_PPID_CHANGED);
+            exit(ExitCodes::EXIT_PPID_CHANGED);
         }
     }
 
@@ -50,6 +47,6 @@ class WorkerProcess {
             pcntl_signal_dispatch();
         }
         fwrite(STDOUT, "--> Worker shutdown requested, exiting" . PHP_EOL);
-        exit(self::EXIT_SUCCESS);
+        exit(ExitCodes::EXIT_SUCCESS);
     }
 }

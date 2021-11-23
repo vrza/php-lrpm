@@ -8,8 +8,6 @@ use CardinalCollections\Mutable\Map;
 
 class ProcessManager
 {
-    private const EXIT_SUCCESS = 0;
-
     private const SUPERVISOR_PROCESS_TAG = '[lrpm supervisor]';
 
     public const CONFIG_POLL_TIME_INIT = 0;
@@ -133,7 +131,7 @@ class ProcessManager
             self::setChildProcessTitle("worker $id");
             $workerProcess->work($job['config']);
             fwrite(STDOUT, "--> Child process for job $id with PID $childPid exiting cleanly" . PHP_EOL);
-            exit(self::EXIT_SUCCESS);
+            exit(ExitCodes::EXIT_SUCCESS);
         } elseif ($pid > 0) { // parent process
             $this->workersMetadata->updateStartedJob($id, $pid);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);

@@ -7,8 +7,6 @@ use TIPC\UnixSocketStreamServer;
 
 class ConfigurationService implements MessageHandler
 {
-    private const EXIT_NO_SOCKET = 69;
-
     public const REQ_POLL_CONFIG_SOURCE = 'config';
     public const RESP_ERROR_CONFIG_SOURCE = 'error_polling_config_source';
 
@@ -58,7 +56,7 @@ class ConfigurationService implements MessageHandler
     {
         $socketPath = IPCUtilities::serverFindUnixSocket('config', IPCUtilities::getSocketDirs());
         if (is_null($socketPath)) {
-            exit(self::EXIT_NO_SOCKET);
+            exit(ExitCodes::EXIT_NO_SOCKET);
         }
         $this->messageServer = new UnixSocketStreamServer($socketPath, $this);
     }
