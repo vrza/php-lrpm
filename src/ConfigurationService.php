@@ -9,6 +9,7 @@ class ConfigurationService implements MessageHandler
 {
     private const EXIT_NO_SOCKET = 69;
 
+    public const REQ_POLL_CONFIG_SOURCE = 'config';
     public const RESP_ERROR_CONFIG_SOURCE = 'error_polling_config_source';
 
     private $messageServer;

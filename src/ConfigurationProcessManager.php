@@ -105,7 +105,7 @@ class ConfigurationProcessManager
                 $remaining = sleep($remaining);
                 pcntl_signal_dispatch();
             }
-            if ($this->shouldRun === false) {
+            if (!$this->shouldRun) {
                 return;
             }
             if ($remaining == 0) {
@@ -146,7 +146,7 @@ class ConfigurationProcessManager
         if ($client->connect() === false) {
             throw new ConfigurationPollException("Could not connect to socket {$this->configSocket}");
         }
-        if ($client->sendMessage('config') === false) {
+        if ($client->sendMessage(ConfigurationService::REQ_POLL_CONFIG_SOURCE) === false) {
             $client->disconnect();
             throw new ConfigurationPollException("Could not send config query message over socket {$this->configSocket}");
         }
