@@ -24,7 +24,7 @@ class ConfigurationService implements MessageHandler
     public function startMessageListener(): void
     {
         if (!is_null($this->messageServer)) {
-            fwrite(STDOUT, '==> Starting configuration message listener service' . PHP_EOL);
+            fwrite(STDERR, '--> Starting configuration message listener service' . PHP_EOL);
             $this->messageServer->listen();
         }
     }
@@ -49,7 +49,7 @@ class ConfigurationService implements MessageHandler
         try {
             $config = $this->configurationSource->loadConfiguration();
         } catch (Exception $e) {
-            fwrite(STDERR, '==> Error loading configuration from source: ' . $e->getMessage() . PHP_EOL);
+            fwrite(STDERR, '--> Error loading configuration from source: ' . $e->getMessage() . PHP_EOL);
         }
         return $config === self::RESP_ERROR_CONFIG_SOURCE ? $config : Serialization::serialize($config);
     }
