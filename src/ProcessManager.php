@@ -306,7 +306,8 @@ class ProcessManager
         fwrite(STDOUT, '==> Waiting for all child processes to terminate' . PHP_EOL);
         while (count($this->workersMetadata->getAllPids()) > 0) {
             $this->checkStoppingProcesses();
-            $this->controlMessageHandler->checkMessages($this->secondsBetweenProcessStatePolls);
+            $this->controlMessageHandler->checkMessages(0, 50000);
+            pcntl_signal_dispatch();
             pcntl_signal_dispatch();
         }
 
