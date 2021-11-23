@@ -18,13 +18,13 @@ class ConfigurationProcessManager
     private $configProcessId;
     private $configProcessRetries = 0;
     private $configProcessLastStart = 0;
-    private $signalHandlers;
+    private $supervisorSignalHandlers;
     private $lastSigUsr1Info = [];
 
     public function __construct(string $configurationSourceClass, $signalHandlers)
     {
         $this->configurationSourceClass = $configurationSourceClass;
-        $this->signalHandlers = $signalHandlers;
+        $this->supervisorSignalHandlers = $signalHandlers;
     }
 
     public function shutdown()
@@ -72,12 +72,12 @@ class ConfigurationProcessManager
     public function startConfigurationProcess(): void
     {
         $supervisorPid = getmypid();
-        $signals = array_keys($this->signalHandlers);
+        $signals = array_keys($this->supervisorSignalHandlers);
         flush();
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
-            foreach ($this->signalHandlers as $signal => $_handler) {
+            foreach ($this->supervisorSignalHandlers as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }
             $configPid = getmypid();
@@ -93,7 +93,7 @@ class ConfigurationProcessManager
                     fwrite(STDERR, "--> Parent PID changed, config process exiting" . PHP_EOL);
                     exit(self::EXIT_PPID_CHANGED);
                 }
-                $configurationService->checkMessages(0, 100);
+                $configurationService->checkMessages(0, 50000);
             }
         } elseif ($pid > 0) { // parent process
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
@@ -139,6 +139,13 @@ class ConfigurationProcessManager
         $this->configProcessId = null;
     }
 
+    /**
+     * Creates a configuration client and contacts the configuration
+     * process with a request to poll for latest configuration.
+     *
+     * @return array containing latest configuration
+     * @throws ConfigurationPollException
+     */
     public function pollConfiguration(): array
     {
         $recvBufSize = 8 * 1024 * 1024;
@@ -150,7 +157,7 @@ class ConfigurationProcessManager
             $client->disconnect();
             throw new ConfigurationPollException("Could not send config query message over socket {$this->configSocket}");
         }
-        $signals = array_keys($this->signalHandlers);
+        $signals = array_keys($this->supervisorSignalHandlers);
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         if (empty($response = $client->receiveMessage())) {
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
