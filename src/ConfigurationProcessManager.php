@@ -47,7 +47,7 @@ class ConfigurationProcessManager
         return $this->lastSigUsr1Info['pid'] ?? 0;
     }
 
-    public function retryStartingConfigProcess()
+    public function retryStartingConfigProcess($controlMessageHandler)
     {
         if ((time() - $this->configProcessLastStart) >= self::CONFIG_PROCESS_MIN_RUN_TIME_SECONDS) {
             $this->configProcessRetries = 0;
@@ -64,12 +64,12 @@ class ConfigurationProcessManager
             }
             $this->configProcessRetries++;
             $this->configProcessLastStart = time();
-            $this->startConfigurationProcess();
+            $this->startConfigurationProcess($controlMessageHandler);
         }
         return $this->configProcessRetries;
     }
 
-    public function startConfigurationProcess(): void
+    public function startConfigurationProcess($controlMessageHandler): void
     {
         $supervisorPid = getmypid();
         $signals = array_keys($this->supervisorSignalHandlers);
@@ -77,6 +77,7 @@ class ConfigurationProcessManager
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
+            $controlMessageHandler->stopMessageListener();
             foreach ($this->supervisorSignalHandlers as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }

@@ -281,7 +281,7 @@ class ProcessManager
 
         fwrite(STDOUT, '==> Entering lrpm main loop' . PHP_EOL);
         while ($this->shouldRun) {
-            $configProcessRetries = $this->configProcessManager->retryStartingConfigProcess();
+            $configProcessRetries = $this->configProcessManager->retryStartingConfigProcess($this->controlMessageHandler);
             if ($configProcessRetries === false) {
                 $this->shutdown();
             }
@@ -311,6 +311,7 @@ class ProcessManager
             pcntl_signal_dispatch();
         }
 
+        $this->controlMessageHandler->stopMessageListener();
         fwrite(STDOUT, '==> lrpm shut down cleanly' . PHP_EOL);
     }
 
