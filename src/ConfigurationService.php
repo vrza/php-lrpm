@@ -7,6 +7,7 @@ use TIPC\UnixSocketStreamServer;
 
 class ConfigurationService implements MessageHandler
 {
+    public const SOCKET_FILE_NAME = 'config';
     public const REQ_POLL_CONFIG_SOURCE = 'config';
     public const RESP_ERROR_CONFIG_SOURCE = 'error_polling_config_source';
 
@@ -17,6 +18,21 @@ class ConfigurationService implements MessageHandler
     {
         $this->initializeMessageServer();
         $this->configurationSource = new $configurationSourceClass();
+    }
+
+    public function runConfigurationProcessLoop($supervisorPid)
+    {
+        $this->startMessageListener();
+        fwrite(STDERR, "--> Signaling parent $supervisorPid that we are ready to accept messages" . PHP_EOL);
+        posix_kill($supervisorPid, SIGUSR1);
+        while (true) {
+            $ppid = posix_getppid();
+            if ($ppid != $supervisorPid) {
+                fwrite(STDERR, "--> Parent PID changed, config process exiting" . PHP_EOL);
+                exit(ExitCodes::EXIT_PPID_CHANGED);
+            }
+            $this->checkMessages(0, 50000);
+        }
     }
 
     public function startMessageListener(): void
@@ -54,7 +70,7 @@ class ConfigurationService implements MessageHandler
 
     private function initializeMessageServer()
     {
-        $socketPath = IPCUtilities::serverFindUnixSocket('config', IPCUtilities::getSocketDirs());
+        $socketPath = IPCUtilities::serverFindUnixSocket(self::SOCKET_FILE_NAME, IPCUtilities::getSocketDirs());
         if (is_null($socketPath)) {
             exit(ExitCodes::EXIT_NO_SOCKET);
         }

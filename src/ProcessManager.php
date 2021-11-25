@@ -3,6 +3,7 @@
 namespace PHPLRPM;
 
 use Exception;
+use RuntimeException;
 
 use CardinalCollections\Mutable\Map;
 
@@ -14,9 +15,12 @@ class ProcessManager
 
     private $shouldRun = true;
 
+    private $configurationSourceClass;
     private $configProcessManager;
+    private $configClient;
     private $configPollIntervalSeconds;
     private $timeOfLastConfigPoll = self::CONFIG_POLL_TIME_INIT;
+    private $lastSigUsr1Info = [];
 
     private $workersMetadata;
     private $secondsBetweenProcessStatePolls = 1;
@@ -30,8 +34,17 @@ class ProcessManager
         $this->workersMetadata = new WorkerMetadata();
         $this->controlMessageHandler = new ControlMessageHandler($this);
         fwrite(STDERR, "==> Registering supervisor signal handlers" . PHP_EOL);
-        $this->configProcessManager = new ConfigurationProcessManager($configurationSourceClass, $this->getSignalHandlers());
+        $this->configurationSourceClass = $configurationSourceClass;
+        $this->configProcessManager = new ConfigurationProcessManager();
+        $this->configClient = new ConfigurationClient();
         $this->installSignalHandlers();
+    }
+
+    private function configInitCleanup()
+    {
+        $this->controlMessageHandler->destroyMessageServer();
+        $this->controlMessageHandler = null;
+        $this->workersMetadata = null;
     }
 
     private function workerInitCleanup()
@@ -45,9 +58,6 @@ class ProcessManager
     public function shutdown(): void
     {
         $this->shouldRun = false;
-        if (!is_null($this->configProcessManager)) {
-            $this->configProcessManager->shutdown();
-        }
     }
 
     public function getStatus(): array
@@ -86,7 +96,7 @@ class ProcessManager
             },
             SIGUSR1 => function (int $signo, $siginfo) {
                 fwrite(STDERR, "==> Supervisor caught SIGUSR1 ($signo), config process is ready" . PHP_EOL);
-                $this->configProcessManager->setLastSigUsr1Info($siginfo);
+                $this->setLastSigUsr1Info($siginfo);
             }
         ];
     }
@@ -96,6 +106,16 @@ class ProcessManager
         foreach ($this->getSignalHandlers() as $signal => $handler) {
             pcntl_signal($signal, $handler);
         }
+    }
+
+    public function setLastSigUsr1Info($siginfo)
+    {
+        $this->lastSigUsr1Info = $siginfo;
+    }
+
+    public function getLastSigUsr1Pid(): int
+    {
+        return $this->lastSigUsr1Info['pid'] ?? 0;
     }
 
     private static function setSupervisorProcessTitle(): void
@@ -115,6 +135,45 @@ class ProcessManager
                 cli_get_process_title()
             )
         );
+    }
+
+    private function startConfigurationProcess(): void
+    {
+        $supervisorPid = getmypid();
+        $signals = array_keys($this->getSignalHandlers());
+        flush();
+        pcntl_sigprocmask(SIG_BLOCK, $signals);
+        $pid = pcntl_fork();
+        if ($pid === 0) { // child process
+            $this->configInitCleanup();
+            foreach ($this->getSignalHandlers() as $signal => $_handler) {
+                pcntl_signal($signal, SIG_DFL);
+            }
+            $configPid = getmypid();
+            fwrite(STDERR, "--> Config process with PID $configPid running" . PHP_EOL);
+            self::setChildProcessTitle('config');
+            $configurationService = new ConfigurationService($this->configurationSourceClass);
+            $configurationService->runConfigurationProcessLoop($supervisorPid);
+        } elseif ($pid > 0) { // parent process
+            pcntl_sigprocmask(SIG_UNBLOCK, $signals);
+            $this->configProcessManager->setPID($pid);
+            fwrite(STDERR, "==> Forked config process with PID: $pid" . PHP_EOL);
+            fwrite(STDERR, "==> Waiting for config service to let us know it's ready" . PHP_EOL);
+            $remaining = 60;
+            while ($this->getLastSigUsr1Pid() !== $pid && $this->shouldRun && $remaining > 0) {
+                $remaining = sleep($remaining);
+                pcntl_signal_dispatch();
+            }
+            if (!$this->shouldRun) {
+                return;
+            }
+            if ($remaining == 0) {
+                throw new RuntimeException("Config process did not send readiness notification");
+            }
+            $this->configClient->findConfigSocket();
+        } else {
+            throw new RuntimeException("Error forking config process: $pid");
+        }
     }
 
     private function startWorkerProcess($id): void
@@ -201,7 +260,7 @@ class ProcessManager
         if ($this->timeOfLastConfigPoll + $this->configPollIntervalSeconds <= time()) {
             $this->timeOfLastConfigPoll = time();
             try {
-                $unvalidatedNewWorkers = $this->configProcessManager->pollConfiguration();
+                $unvalidatedNewWorkers = $this->configClient->pollConfiguration(self::getSignalHandlers());
                 $newWorkers = ConfigurationValidator::filter($unvalidatedNewWorkers);
                 $this->workersMetadata->purgeRemovedJobs();
                 foreach ($newWorkers as $jobId => $newJobConfig) {
@@ -286,9 +345,11 @@ class ProcessManager
 
         fwrite(STDOUT, '==> Entering lrpm main loop' . PHP_EOL);
         while ($this->shouldRun) {
-            $configProcessRetries = $this->configProcessManager->retryStartingConfigProcess($this->controlMessageHandler);
-            if ($configProcessRetries === false) {
-                $this->shutdown();
+            $retry = $this->configProcessManager->shouldRetryStartingConfigProcess();
+            if ($retry) {
+                $this->startConfigurationProcess();
+            } elseif (is_null($retry)) {
+                break;
             }
             $this->pollConfigurationSourceForChanges();
             $this->workersMetadata->slateScheduledRestarts();
