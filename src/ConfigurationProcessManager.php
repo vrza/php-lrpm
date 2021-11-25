@@ -7,6 +7,7 @@ class ConfigurationProcessManager
     private const CONFIG_PROCESS_MAX_BACKOFF_SECONDS = 300;
     private const CONFIG_PROCESS_MAX_RETRIES = 5;
     private const CONFIG_PROCESS_MIN_RUN_TIME_SECONDS = 5;
+    private const CONFIG_PROCESS_TERM_TIMEOUT_SECONDS = 5;
 
     private $configProcessId;
     private $configProcessRetries = 0;
@@ -51,13 +52,15 @@ class ConfigurationProcessManager
 
     public function stopConfigurationProcess(): void
     {
-        $termTimeoutSeconds = 5;
         if (is_null($this->configProcessId)) {
             return;
         }
         posix_kill($this->configProcessId, SIGTERM);
-        sleep($termTimeoutSeconds);
-        pcntl_signal_dispatch();
+        $remaining = self::CONFIG_PROCESS_TERM_TIMEOUT_SECONDS;
+        while (!is_null($this->configProcessId) && $remaining > 0) {
+            $remaining = sleep($remaining);
+            pcntl_signal_dispatch();
+        }
         if (!is_null($this->configProcessId)) {
             posix_kill($this->configProcessId, SIGKILL);
         }
