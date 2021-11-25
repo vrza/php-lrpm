@@ -34,6 +34,14 @@ class ProcessManager
         $this->installSignalHandlers();
     }
 
+    private function workerInitCleanup()
+    {
+        $this->controlMessageHandler->destroyMessageServer();
+        $this->controlMessageHandler = null;
+        $this->configProcessManager = null;
+        $this->workersMetadata = null;
+    }
+
     public function shutdown(): void
     {
         $this->shouldRun = false;
@@ -117,8 +125,7 @@ class ProcessManager
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
-            $this->controlMessageHandler->stopMessageListener();
-            $this->controlMessageHandler = null;
+            $this->workerInitCleanup();
             foreach ($this->getSignalHandlers() as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }
@@ -309,7 +316,6 @@ class ProcessManager
             pcntl_signal_dispatch();
         }
 
-        $this->controlMessageHandler->stopMessageListener();
         fwrite(STDOUT, '==> lrpm shut down cleanly' . PHP_EOL);
     }
 

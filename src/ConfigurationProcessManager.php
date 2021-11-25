@@ -76,7 +76,7 @@ class ConfigurationProcessManager
         pcntl_sigprocmask(SIG_BLOCK, $signals);
         $pid = pcntl_fork();
         if ($pid === 0) { // child process
-            $controlMessageHandler->stopMessageListener();
+            $controlMessageHandler->destroyMessageServer();
             foreach ($this->supervisorSignalHandlers as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }

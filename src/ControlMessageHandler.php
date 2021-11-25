@@ -16,6 +16,22 @@ class ControlMessageHandler implements MessageHandler
         $this->initializeMessageServer();
     }
 
+    public function initializeMessageServer()
+    {
+        $socketPath = IPCUtilities::serverFindUnixSocket('control', IPCUtilities::getSocketDirs());
+        if (is_null($socketPath)) {
+            fwrite(STDERR, "==> Control messages disabled" . PHP_EOL);
+        } else {
+            $this->messageServer = new UnixSocketStreamServer($socketPath, $this);
+        }
+    }
+
+    public function destroyMessageServer(): void
+    {
+        $this->stopMessageListener();
+        $this->messageServer = null;
+    }
+
     public function startMessageListener(): void
     {
         if (!is_null($this->messageServer)) {
@@ -65,16 +81,6 @@ class ControlMessageHandler implements MessageHandler
                 return 'Scheduled immediate configuration reload';
             default:
                 return "lrpm: '$msg' is not a valid message. $help";
-        }
-    }
-
-    private function initializeMessageServer()
-    {
-        $socketPath = IPCUtilities::serverFindUnixSocket('control', IPCUtilities::getSocketDirs());
-        if (is_null($socketPath)) {
-            fwrite(STDERR, "==> Control messages disabled" . PHP_EOL);
-        } else {
-            $this->messageServer = new UnixSocketStreamServer($socketPath, $this);
         }
     }
 
