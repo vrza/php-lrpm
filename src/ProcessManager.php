@@ -257,8 +257,11 @@ class ProcessManager
 
     private function pollConfigurationSourceForChanges(): void
     {
-        if ($this->timeOfLastConfigPoll + $this->configPollIntervalSeconds <= time()) {
-            $this->timeOfLastConfigPoll = time();
+        $now = time();
+        if (!is_null($this->configProcessManager->getPID())
+            && $this->timeOfLastConfigPoll + $this->configPollIntervalSeconds <= $now
+        ) {
+            $this->timeOfLastConfigPoll = $now;
             try {
                 $unvalidatedNewWorkers = $this->configClient->pollConfiguration(self::getSignalHandlers());
                 $newWorkers = ConfigurationValidator::filter($unvalidatedNewWorkers);
