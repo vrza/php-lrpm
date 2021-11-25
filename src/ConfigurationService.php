@@ -43,13 +43,6 @@ class ConfigurationService implements MessageHandler
         }
     }
 
-    public function stopMessageListener(): void
-    {
-        if (!is_null($this->messageServer)) {
-            $this->messageServer->close();
-        }
-    }
-
     public function checkMessages($timeoutSeconds = 0, $timeoutMicroseconds = 0): void
     {
         if (!is_null($this->messageServer)) {
