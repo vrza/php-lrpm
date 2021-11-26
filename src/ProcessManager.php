@@ -95,7 +95,7 @@ class ProcessManager
                 $this->timeOfLastConfigPoll = self::CONFIG_POLL_TIME_INIT;
             },
             SIGUSR1 => function (int $signo, $siginfo) {
-                fwrite(STDERR, "==> Supervisor caught SIGUSR1 ($signo), config process is ready" . PHP_EOL);
+                fwrite(STDERR, "==> Supervisor caught SIGUSR1 ($signo)" . PHP_EOL);
                 $this->setLastSigUsr1Info($siginfo);
             }
         ];
@@ -170,6 +170,7 @@ class ProcessManager
             if ($remaining == 0) {
                 throw new RuntimeException("Config process did not send readiness notification");
             }
+            fwrite(STDERR, "==> Supervisor received readiness notification from config process" . PHP_EOL);
             $this->configClient->findConfigSocket();
         } else {
             throw new RuntimeException("Error forking config process: $pid");
