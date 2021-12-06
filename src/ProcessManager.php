@@ -10,8 +10,7 @@ use CardinalCollections\Mutable\Map;
 class ProcessManager
 {
     private const SUPERVISOR_PROCESS_TAG = '[lrpm supervisor]';
-
-    public const CONFIG_POLL_TIME_INIT = 0;
+    private const CONFIG_POLL_TIME_INIT = 0;
 
     private $shouldRun = true;
 
