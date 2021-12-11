@@ -51,7 +51,7 @@ class IPCUtilities
      * directories, regardless of the reason (file exists,
      * insufficient permissions...), as this is not a critical failure.
      *
-     * Returns path to a writeable directory, or false if o writeable
+     * Returns path to a writeable directory, or false if a writeable
      * directory is not available.
      *
      * @param array $candidateDirs
