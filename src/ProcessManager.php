@@ -148,6 +148,7 @@ class ProcessManager
             foreach ($this->getSignalHandlers() as $signal => $_handler) {
                 pcntl_signal($signal, SIG_DFL);
             }
+            pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             $configPid = getmypid();
             fwrite(STDERR, "--> Config process with PID $configPid running" . PHP_EOL);
             self::setChildProcessTitle('config');
