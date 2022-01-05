@@ -18,7 +18,7 @@ class ControlMessageHandler implements MessageHandler
 
     public function initializeMessageServer()
     {
-        $socketPath = IPCUtilities::serverFindUnixSocket('control', IPCUtilities::getSocketDirs());
+        $socketPath = UnixSocketStreamServer::findSocketPath('control', IPCUtilities::getSocketDirs());
         if (is_null($socketPath)) {
             fwrite(STDERR, "==> Control messages disabled" . PHP_EOL);
         } else {

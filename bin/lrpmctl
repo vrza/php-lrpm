@@ -58,7 +58,7 @@ use TextTableFormatter\Table;
 use TerminalPalette\AnsiSeq;
 use PHPLRPM\IPCUtilities;
 
-$socket = IPCUtilities::clientFindUnixSocket('control', IPCUtilities::getSocketDirs());
+$socket = UnixSocketStreamClient::findSocketPath('control', IPCUtilities::getSocketDirs());
 if (is_null($socket)) {
     exitNoConnection();
 }

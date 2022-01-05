@@ -63,7 +63,7 @@ class ConfigurationService implements MessageHandler
 
     private function initializeMessageServer()
     {
-        $socketPath = IPCUtilities::serverFindUnixSocket(self::SOCKET_FILE_NAME, IPCUtilities::getSocketDirs());
+        $socketPath = UnixSocketStreamServer::findSocketPath(self::SOCKET_FILE_NAME, IPCUtilities::getSocketDirs());
         if (is_null($socketPath)) {
             exit(ExitCodes::EXIT_NO_SOCKET);
         }

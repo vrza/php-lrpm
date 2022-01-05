@@ -10,7 +10,7 @@ class ConfigurationClient
 
     public function findConfigSocket()
     {
-        $this->configSocket = IPCUtilities::clientFindUnixSocket(
+        $this->configSocket = UnixSocketStreamClient::findSocketPath(
             ConfigurationService::SOCKET_FILE_NAME,
             IPCUtilities::getSocketDirs()
         );
