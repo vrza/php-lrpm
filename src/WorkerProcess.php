@@ -3,9 +3,6 @@
 namespace PHPLRPM;
 
 class WorkerProcess {
-    const EXIT_SUCCESS = 0;
-    const EXIT_PPID_CHANGED = 2;
-
     private $worker;
 
     private $ppid = -1;
@@ -15,11 +12,11 @@ class WorkerProcess {
     {
         $this->worker = $worker;
         pcntl_signal(SIGTERM,  function (int $signo, $_siginfo) {
-            fwrite(STDOUT, "--> Worker caught SIGTERM" . PHP_EOL);
+            fwrite(STDOUT, "--> Worker caught SIGTERM ($signo)" . PHP_EOL);
             $this->shutdown_signal_handler($signo);
         });
         pcntl_signal(SIGINT,  function (int $signo, $_siginfo) {
-            fwrite(STDOUT, "--> Worker caught SIGINT" . PHP_EOL);
+            fwrite(STDOUT, "--> Worker caught SIGINT ($signo)" . PHP_EOL);
             $this->shutdown_signal_handler($signo);
         });
     }
@@ -34,8 +31,8 @@ class WorkerProcess {
     {
         $ppid = posix_getppid();
         if ($ppid != $this->ppid) {
-            fwrite(STDERR, "--> Parent PID changed, exiting" . PHP_EOL);
-            exit(self::EXIT_PPID_CHANGED);
+            fwrite(STDERR, "--> Parent PID changed, worker process exiting" . PHP_EOL);
+            exit(ExitCodes::EXIT_PPID_CHANGED);
         }
     }
 
@@ -50,6 +47,6 @@ class WorkerProcess {
             pcntl_signal_dispatch();
         }
         fwrite(STDOUT, "--> Worker shutdown requested, exiting" . PHP_EOL);
-        exit(self::EXIT_SUCCESS);
+        exit(ExitCodes::EXIT_SUCCESS);
     }
 }

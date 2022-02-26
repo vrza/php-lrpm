@@ -43,7 +43,7 @@ Currently LRPM is not intended to run as PID 1, nor was it tested in this role.
 == Usage
 
 1. Implement the `ConfigurationSource`. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers (see details below).
-2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the death of the LRPM supervisor process). Backoff should be implemented by the cycle() method -- be careful not to run a tight loop at times when cycles are not doing actual work!
+2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the termination of the LRPM supervisor process). Backoff should be implemented at the end of the `cycle()` method, as we dispatch signal handlers right after `cycle()` returns. Be careful not to run a tight loop at times when cycles are not doing actual work!
 
 === Job configuration
 
@@ -110,17 +110,15 @@ Default value: 10
 
 === Signal handling
 
-LRPM supervisor process installs signal handlers for SIGCHLD, SIGTERM and SIGINT.
+LRPM supervisor process installs signal handlers for SIGCHLD, SIGTERM, SIGINT, SIGHUP and SIGUSR1.
 
-You can implement and install your own signal handlers inside your Worker implementation, but make sure that your Worker process shuts down cleanly after receiving SIGTERM, otherwise LRPM will consider it unresponsive and follow up with a SIGKILL.
+Worker process installs default signal handlers for SIGTERM and SIGINT. Signal handlers are dispatched between loop cycles, and these default handlers will terminate the Worker.
 
-Default SIGTERM and SIGINT handlers will terminate the Worker before the next loop cycle.
+You can implement and install your own signal handlers inside your Worker implementation, but make sure that your Worker process shuts down cleanly after receiving SIGTERM, otherwise the LRPM supervisor will consider it unresponsive and follow up with a SIGKILL.
 
 === Misc caveats
 
-Be aware that code in your `ConfigurationSource` class will run in the supervisor (parent) process, while your `Worker` classes will run in child processes.
-
-Sharing open sockets between parent and children through `fork(2)` is not safe. Worker processes should connect to wherever they need to connect to only after they have been spawned. For example, opening sockets in `ConfigurationSource`, in the parent process, passing them via references in the configuration associative array, and then using them in Worker processes is inherently unsafe.
+Be aware that code in your entry point will run in the supervisor (parent) process, while your `Worker` classes will run in child processes. The entry point should do no more than set up the autoloader and run the `ProcessManager`. Sharing open sockets between parent and children through `fork(2)` is not safe. Worker processes should connect to wherever they need to connect to only after they have been spawned.
 
 == Operating LRPM
 
@@ -146,11 +144,11 @@ opcache.file_cache_only=0
 
 PHP-LRPM keeps metadata in an associative array. For efficient lookups by PID, a separate index is maintained.
 
-This functionality was offloaded to a generic library https://github.com/vrza/array-with-secondary-keys[Array with Secondary Keys], that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work). Implementing this particular collection lead to creation of https://github.com/vrza/cardinal-collections[Cardinal Collections], a PHP toolkit for building collections.
+This functionality was offloaded to a generic library https://github.com/vrza/array-with-secondary-keys[Array with Secondary Keys], that wraps a hash map and maintains secondary indexes (similar to how secondary keys in an SQL database work). Implementing this particular collection lead to the creation of https://github.com/vrza/cardinal-collections[Cardinal Collections], a PHP toolkit for building collections.
 
 ==== Implement receiving, handling and responding to control messages
 
-Included is the `lrpmctl` tool, which uses the https://github.com/vrza/php-tipc[tipc] library to exchange messages with a running instance of LRPM. Some examples of messages include getting the `status` of running processes (see screenshot above), and requesting a `restart` of a process.
+Included is the `lrpmctl` tool, which uses the https://github.com/vrza/php-tipc[tipc] library to exchange messages with a running instance of LRPM over a Unix domain socket connection. Some examples of messages include getting the `status` of all workers (see screenshot above), and requesting a `restart` of a worker process.
 
 ==== Make sure unresponsive processes get terminated
 
@@ -159,6 +157,10 @@ Wait for children to terminate after sending SIGTERM, follow up with SIGKILL if 
 ==== Blocking shutdown
 
 Implemented blocking shutdown loop that makes sure all children are terminated on shutdown, including processes that may be unresponsive.
+
+==== Configuration process
+
+Made `ConfigurationSource` run in a process separate from the supervisor. This is to prevent `Worker` processes inheriting sockets opened by `ConfigurationSource` code (e.g. persistent database connections). The supervisor process and the config process are using the tipc library to exchange messages over a Unix domain socket connection.
 
 == Some name ideas that were considered
 

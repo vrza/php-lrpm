@@ -56,8 +56,12 @@ probeForAutoloader($progname);
 use TIPC\UnixSocketStreamClient;
 use TextTableFormatter\Table;
 use TerminalPalette\AnsiSeq;
+use PHPLRPM\IPCUtilities;
 
-$socket = findLrpmUnixSocket();
+$socket = UnixSocketStreamClient::findSocketPath('control', IPCUtilities::getSocketDirs());
+if (is_null($socket)) {
+    exitNoConnection();
+}
 $client = new UnixSocketStreamClient($socket);
 if ($client->connect() === false) {
     exitNoConnection();
@@ -89,32 +93,6 @@ function probeForAutoloader($programName): void
 
     fwrite(STDERR, $programName . ': could not find autoload.php, use PHP Composer to generate autoloader code' . PHP_EOL);
     exit(EXIT_AUTOLOADER_NOT_FOUND);
-}
-
-function findLrpmUnixSocket()
-{
-    $socketDirs = [
-        '/run/php-lrpm',
-        '/run/user/' . posix_geteuid() . '/php-lrpm'
-    ];
-    $socketFileName = 'control';
-    foreach ($socketDirs as $dir) {
-        $candidate = $dir . '/' . $socketFileName;
-        if (is_writable($candidate)) {
-            return $candidate;
-        }
-    }
-    fwrite(STDERR, "Could not find lrpm Unix domain socket" . PHP_EOL);
-    fwrite(
-        STDERR,
-        "Tried: " . implode(
-            ', ',
-            array_map(function ($dir) use ($socketFileName) {
-                return $dir . '/' . $socketFileName;
-            }, $socketDirs)
-        ) . PHP_EOL
-    );
-    exitNoConnection();
 }
 
 function exitNoConnection(): void
