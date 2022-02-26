@@ -18,7 +18,7 @@ $longopts = [
 ];
 $options = getopt($shortopts, $longopts, $rest_index);
 $progname = basename($argv[0]);
-$helpmsg = "Usage: $progname [<options>] <message>
+$helpmsg = "Usage: $progname [options] <message>
 
 Options:
   -h, --help         display this help and exit

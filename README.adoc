@@ -38,12 +38,13 @@ PHP-LRPM uses exponential backoff when attempting to restart a process; some pro
 
 == Non-goals
 
-Currently LRPM is not intended to run as PID 1, nor was it tested in this role.
+Currently, LRPM is not intended to run as PID 1, nor was it tested in this role.
 
 == Usage
 
-1. Implement the `ConfigurationSource`. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers (see details below).
-2. Implement the `Worker`. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the termination of the LRPM supervisor process). Backoff should be implemented at the end of the `cycle()` method, as we dispatch signal handlers right after `cycle()` returns. Be careful not to run a tight loop at times when cycles are not doing actual work!
+1. Implement one or more `Worker` classes. This interface exposes two public methods, `start()` and `cycle()`. The child process will call `start()`, passing the worker configuration as an argument, and then enter an endless loop, where it calls `cycle()`, and then checks for a shutdown condition (usually, the termination of the LRPM supervisor process). Backoff should be implemented at the end of the `cycle()` method, as we dispatch signal handlers right after `cycle()` returns. Be careful not to run a tight loop at times when cycles are not doing actual work!
+2. Implement the `ConfigurationSource` class. This interface exposes a public method `loadConfiguration()`, that returns an associative array containing the configuration for all the workers (see example and full documentation in the `Job configuration` subsection).
+3. Run `bin/rlpm` with your configuration class as an argument, e.g.  `bin/rlpm '\MyNamespace\MyConfigurationSource'`
 
 === Job configuration
 
@@ -116,9 +117,11 @@ Worker process installs default signal handlers for SIGTERM and SIGINT. Signal h
 
 You can implement and install your own signal handlers inside your Worker implementation, but make sure that your Worker process shuts down cleanly after receiving SIGTERM, otherwise the LRPM supervisor will consider it unresponsive and follow up with a SIGKILL.
 
-=== Misc caveats
+=== Implementing a custom entry point
 
-Be aware that code in your entry point will run in the supervisor (parent) process, while your `Worker` classes will run in child processes. The entry point should do no more than set up the autoloader and run the `ProcessManager`. Sharing open sockets between parent and children through `fork(2)` is not safe. Worker processes should connect to wherever they need to connect to only after they have been spawned.
+If you need to implement a custom entry point for LRPM, be aware that the code in your custom entry point will run in the supervisor (parent) process, while your `Worker` classes will run in child processes `fork(2)`-ed from the supervisor. The entry point should do no more than set up the autoloader and run the `ProcessManager`. Any open file descriptors apart from stdin/stdout/stderr should be closed before entering the event loop (`ProcessManager->run()`). Sharing open sockets between parent and children through `fork(2)` is not safe! Worker processes should connect to wherever they need to connect to only after they have been spawned.
+
+If unsure, use the provided `bin/lrpm` entry point.
 
 == Operating LRPM
 

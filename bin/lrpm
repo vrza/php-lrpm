@@ -1,0 +1,64 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+error_reporting(E_ALL);
+
+const EXIT_SUCCESS = 0;
+const EXIT_USAGE = 64;
+const EXIT_AUTOLOADER_NOT_FOUND = 1;
+const EXIT_CONFIG_SOURCE_CLASS_NOT_FOUND = 2;
+
+$shortopts = 'h';
+$longopts = [
+    'help'
+];
+$options = getopt($shortopts, $longopts, $rest_index);
+$progname = basename($argv[0]);
+$helpmsg = "Usage: $progname [options] <configuration-class>
+
+Options:
+  -h, --help         display this help and exit
+";
+
+if (array_key_exists('h', $options) || array_key_exists('help', $options)) {
+    fwrite(STDERR, $helpmsg);
+    exit(EXIT_USAGE);
+}
+
+$rest = array_slice($argv, $rest_index);
+if (count($rest) < 1) {
+    fwrite(STDERR, $helpmsg);
+    exit(EXIT_USAGE);
+}
+
+$configSourceClass = $rest[0];
+
+probeForAutoloader($progname);
+
+if (!class_exists($configSourceClass)) {
+    fwrite(STDERR, "Cannot find class: $configSourceClass" . PHP_EOL);
+    exit(EXIT_CONFIG_SOURCE_CLASS_NOT_FOUND);
+}
+
+use PHPLRPM\ProcessManager;
+
+$processManager = new ProcessManager($configSourceClass);
+$processManager->run();
+
+function probeForAutoloader($programName): void
+{
+    $autoloadLocations = [
+        __DIR__ . '/../vendor/autoload.php',
+        __DIR__ . '/../../../autoload.php'
+    ];
+
+    foreach ($autoloadLocations as $autoloadFile) {
+        if (file_exists($autoloadFile)) {
+            require_once($autoloadFile);
+            return;
+        }
+    }
+
+    fwrite(STDERR, $programName . ': could not find autoload.php, use PHP Composer to generate autoloader code' . PHP_EOL);
+    exit(EXIT_AUTOLOADER_NOT_FOUND);
+}
