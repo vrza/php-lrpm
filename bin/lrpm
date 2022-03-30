@@ -8,16 +8,18 @@ const EXIT_USAGE = 64;
 const EXIT_AUTOLOADER_NOT_FOUND = 1;
 const EXIT_CONFIG_SOURCE_CLASS_NOT_FOUND = 2;
 
-$shortopts = 'h';
+$shortopts = 'hi::';
 $longopts = [
-    'help'
+    'help',
+    'interval::'
 ];
 $options = getopt($shortopts, $longopts, $rest_index);
 $progname = basename($argv[0]);
 $helpmsg = "Usage: $progname [options] <configuration-class>
 
 Options:
-  -h, --help         display this help and exit
+  -h, --help                          display this help and exit
+  -i<seconds>, --interval=<seconds>   configuration poll interval
 ";
 
 if (array_key_exists('h', $options) || array_key_exists('help', $options)) {
@@ -33,6 +35,10 @@ if (count($rest) < 1) {
 
 $configSourceClass = $rest[0];
 
+$interval = array_key_exists('interval', $options) ? intval($options['interval'])
+          : (array_key_exists('i', $options) ? intval($options['i'])
+          : 0);
+
 probeForAutoloader($progname);
 
 if (!class_exists($configSourceClass)) {
@@ -42,7 +48,9 @@ if (!class_exists($configSourceClass)) {
 
 use PHPLRPM\ProcessManager;
 
-$processManager = new ProcessManager($configSourceClass);
+$processManager = $interval > 0
+                ? new ProcessManager($configSourceClass, $interval)
+                : new ProcessManager($configSourceClass);
 $processManager->run();
 
 function probeForAutoloader($programName): void
