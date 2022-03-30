@@ -3,55 +3,14 @@
 namespace PHPLRPM;
 
 use TIPC\MessageHandler;
-use TIPC\UnixSocketStreamServer;
 
 class ControlMessageHandler implements MessageHandler
 {
-    private $messageServer;
     private $processManager;
 
     public function __construct(ProcessManager $processManager)
     {
         $this->processManager = $processManager;
-        $this->initializeMessageServer();
-    }
-
-    public function initializeMessageServer()
-    {
-        $socketPath = UnixSocketStreamServer::findSocketPath('control', IPCUtilities::getSocketDirs());
-        if (is_null($socketPath)) {
-            fwrite(STDERR, "==> Control messages disabled" . PHP_EOL);
-        } else {
-            $this->messageServer = new UnixSocketStreamServer($socketPath, $this);
-        }
-    }
-
-    public function destroyMessageServer(): void
-    {
-        $this->stopMessageListener();
-        $this->messageServer = null;
-    }
-
-    public function startMessageListener(): void
-    {
-        if (!is_null($this->messageServer)) {
-            fwrite(STDOUT, '==> Starting control message listener service' . PHP_EOL);
-            $this->messageServer->listen();
-        }
-    }
-
-    public function stopMessageListener(): void
-    {
-        if (!is_null($this->messageServer)) {
-            $this->messageServer->close();
-        }
-    }
-
-    public function checkMessages(int $timeoutSeconds = 0, int $timeoutMicroseconds = 0): void
-    {
-        if (!is_null($this->messageServer)) {
-            $this->messageServer->checkMessages($timeoutSeconds, $timeoutMicroseconds);
-        }
     }
 
     public function handleMessage(string $msg): string

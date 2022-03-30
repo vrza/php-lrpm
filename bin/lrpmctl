@@ -53,16 +53,18 @@ if (empty($request)) {
 
 probeForAutoloader($progname);
 
-use TIPC\UnixSocketStreamClient;
+use TIPC\FileSystemUtils;
+use TIPC\SocketStreamClient;
+use TIPC\UnixDomainSocketAddress;
 use TextTableFormatter\Table;
 use TerminalPalette\AnsiSeq;
 use PHPLRPM\IPCUtilities;
 
-$socket = UnixSocketStreamClient::findSocketPath('control', IPCUtilities::getSocketDirs());
+$socket = FileSystemUtils::findWritableFilePath('control', IPCUtilities::getSocketDirs());
 if (is_null($socket)) {
     exitNoConnection();
 }
-$client = new UnixSocketStreamClient($socket);
+$client = new SocketStreamClient(new UnixDomainSocketAddress($socket));
 if ($client->connect() === false) {
     exitNoConnection();
 }
