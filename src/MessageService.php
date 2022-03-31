@@ -11,22 +11,34 @@ use TIPC\UnixDomainSocketAddress;
 
 class MessageService
 {
+    public const CONFIG_SOCKET_FILE_NAME = 'config';
+    public const CONTROL_SOCKET_FILE_NAME = 'control';
+
     private $messageServer;
 
     public function __construct(MessageHandler $configMessageHandler, MessageHandler $controlMessageHandler)
     {
         $socketsData = [];
-        $controlSocketPath = FileSystemUtils::findCreatableFilePath('control', IPCUtilities::getSocketDirs());
+
+        $controlSocketPath = FileSystemUtils::findCreatableFilePath(
+            self::CONTROL_SOCKET_FILE_NAME,
+            IPCUtilities::getSocketDirs()
+        );
         if (is_null($controlSocketPath)) {
             fwrite(STDERR, "==> Control messages disabled" . PHP_EOL);
         } else {
             $socketsData[] = new SocketData(new UnixDomainSocketAddress($controlSocketPath), $controlMessageHandler);
         }
-        $configSocketPath = FileSystemUtils::findCreatableFilePath('config', IPCUtilities::getSocketDirs());
+
+        $configSocketPath = FileSystemUtils::findCreatableFilePath(
+            self::CONFIG_SOCKET_FILE_NAME,
+            IPCUtilities::getSocketDirs()
+        );
         if (is_null($configSocketPath)) {
             throw new RuntimeException("Failed to find a config socket to listen on");
         }
         $socketsData[] = new SocketData(new UnixDomainSocketAddress($configSocketPath), $configMessageHandler);
+
         $this->messageServer = new SocketStreamsServer($socketsData);
     }
 

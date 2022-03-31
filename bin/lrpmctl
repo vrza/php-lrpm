@@ -59,8 +59,12 @@ use TIPC\UnixDomainSocketAddress;
 use TextTableFormatter\Table;
 use TerminalPalette\AnsiSeq;
 use PHPLRPM\IPCUtilities;
+use PHPLRPM\MessageService;
 
-$socket = FileSystemUtils::findWritableFilePath('control', IPCUtilities::getSocketDirs());
+$socket = FileSystemUtils::findWritableFilePath(
+        MessageService::CONTROL_SOCKET_FILE_NAME,
+        IPCUtilities::getSocketDirs()
+);
 if (is_null($socket)) {
     exitNoConnection();
 }
