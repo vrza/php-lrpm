@@ -10,7 +10,7 @@ use TIPC\UnixDomainSocketAddress;
 
 class ConfigurationProcess
 {
-    public const SOCKET_FILE_NAME = 'config';
+    public const DEFAULT_CONFIG_POLL_INTERVAL = 30;
 
     private const CONFIG_POLL_TIME_INIT = 0;
 
@@ -24,7 +24,7 @@ class ConfigurationProcess
     public function findConfigSocket()
     {
         $this->configSocket = FileSystemUtils::findWritableFilePath(
-            self::SOCKET_FILE_NAME,
+            MessageService::CONFIG_SOCKET_FILE_NAME,
             IPCUtilities::getSocketDirs()
         );
         if (is_null($this->configSocket)) {
@@ -67,7 +67,9 @@ class ConfigurationProcess
                     fwrite(STDERR, '--> Could not send config to supervisor: ' . $e->getMessage() . PHP_EOL);
                 }
             }
-            sleep($this->configPollIntervalSeconds);
+            if ($this->configPollIntervalSeconds > 0) {
+                sleep($this->configPollIntervalSeconds);
+            }
             pcntl_signal_dispatch();
         }
     }

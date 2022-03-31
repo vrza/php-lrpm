@@ -35,10 +35,6 @@ if (count($rest) < 1) {
 
 $configSourceClass = $rest[0];
 
-$interval = array_key_exists('interval', $options) ? intval($options['interval'])
-          : (array_key_exists('i', $options) ? intval($options['i'])
-          : 0);
-
 probeForAutoloader($progname);
 
 if (!class_exists($configSourceClass)) {
@@ -46,11 +42,12 @@ if (!class_exists($configSourceClass)) {
     exit(EXIT_CONFIG_SOURCE_CLASS_NOT_FOUND);
 }
 
+use PHPLRPM\ConfigurationProcess;
 use PHPLRPM\ProcessManager;
 
-$processManager = $interval > 0
-                ? new ProcessManager($configSourceClass, $interval)
-                : new ProcessManager($configSourceClass);
+$interval = intval($options['interval'] ?? $options['i'] ?? ConfigurationProcess::DEFAULT_CONFIG_POLL_INTERVAL);
+
+$processManager = new ProcessManager($configSourceClass, $interval);
 $processManager->run();
 
 function probeForAutoloader($programName): void

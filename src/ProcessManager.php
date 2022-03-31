@@ -26,7 +26,7 @@ class ProcessManager
     private $controlMessageHandler;
     private $messageService;
 
-    public function __construct(string $configurationSourceClass, int $configPollIntervalSeconds = 30)
+    public function __construct(string $configurationSourceClass, int $configPollIntervalSeconds = ConfigurationProcess::DEFAULT_CONFIG_POLL_INTERVAL)
     {
         fwrite(STDERR, '==> lrpm starting' . PHP_EOL);
         $this->configPollIntervalSeconds = $configPollIntervalSeconds;
