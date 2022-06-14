@@ -6,11 +6,11 @@ class Serialization
 {
     public static function serialize($data): string
     {
-        return serialize($data);
+        return json_encode($data);
     }
 
     public static function deserialize(string $serializedData)
     {
-        return unserialize($serializedData);
+        return json_decode($serializedData, true);
     }
 }
