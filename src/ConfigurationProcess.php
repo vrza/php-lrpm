@@ -38,6 +38,11 @@ class ConfigurationProcess
         $this->configPollIntervalSeconds = $configPollIntervalSeconds;
     }
 
+    private function isStaticConfig(): bool
+    {
+        return $this->configPollIntervalSeconds == -1;
+    }
+
     private function installSignalHandlers(): void
     {
         fwrite(STDERR, '--> Config process installing signal handlers' . PHP_EOL);
@@ -53,7 +58,7 @@ class ConfigurationProcess
         $this->initClient();
         fwrite(STDERR, "--> Signaling parent $supervisorPid that we are up and running" . PHP_EOL);
         posix_kill($supervisorPid, SIGUSR1);
-        while (true) {
+        do {
             $ppid = posix_getppid();
             if ($ppid != $supervisorPid) {
                 fwrite(STDERR, '--> Parent PID changed, config process exiting' . PHP_EOL);
@@ -71,7 +76,8 @@ class ConfigurationProcess
                 sleep($this->configPollIntervalSeconds);
             }
             pcntl_signal_dispatch();
-        }
+        } while (!$this->isStaticConfig());
+        exit(0);
     }
 
     private function shutdown(): void

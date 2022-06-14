@@ -13,6 +13,13 @@ class ConfigurationProcessManager
     private $configProcessRetries = 0;
     private $configProcessLastStart = 0;
     private $configProcessRestartAt = 0;
+    private $staticConfig;
+    private $staticConfigDone = false;
+
+    public function __construct(bool $staticConfig)
+    {
+        $this->staticConfig = $staticConfig;
+    }
 
     public function getPID(): ?int
     {
@@ -24,10 +31,14 @@ class ConfigurationProcessManager
         $this->configProcessId = $pid;
     }
 
-    public function handleTerminatedConfigProcess(): void
+    public function handleTerminatedConfigProcess(int $exitCode): void
     {
         $this->configProcessId = null;
-        $this->scheduleRestartWithBackoff();
+        if ($this->staticConfig && $exitCode == 0) {
+            $this->staticConfigDone = true;
+        } else {
+            $this->scheduleRestartWithBackoff();
+        }
     }
 
     private function scheduleRestartWithBackoff()
@@ -45,6 +56,9 @@ class ConfigurationProcessManager
 
     public function shouldRetryStartingConfigProcess(): ?bool
     {
+        if ($this->staticConfigDone) {
+            return false;
+        }
         if (!is_null($this->configProcessId)) {
             return false;
         }

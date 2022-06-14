@@ -35,7 +35,8 @@ class ProcessManager
         $this->configMessageHandler = new ConfigurationMessageHandler($this);
         $this->messageService = new MessageService($this->configMessageHandler, $this->controlMessageHandler);
         $this->configurationSourceClass = $configurationSourceClass;
-        $this->configProcessManager = new ConfigurationProcessManager();
+        $staticConfig = $configPollIntervalSeconds == -1;
+        $this->configProcessManager = new ConfigurationProcessManager($staticConfig);
         fwrite(STDERR, '==> Registering supervisor signal handlers' . PHP_EOL);
         $this->installSignalHandlers();
     }
@@ -249,9 +250,10 @@ class ProcessManager
 
         $configPID = $this->configProcessManager->getPID();
         if ($pidsToExitCodes->has($configPID)) {
-            fwrite(STDERR, "==> Config process with PID $configPID terminated" . PHP_EOL);
+            $configExitCode = $pidsToExitCodes->get($configPID);
+            fwrite(STDERR, "==> Config process with PID $configPID terminated with exit code $configExitCode" . PHP_EOL);
             $pidsToExitCodes->remove($configPID);
-            $this->configProcessManager->handleTerminatedConfigProcess();
+            $this->configProcessManager->handleTerminatedConfigProcess($configExitCode);
         }
 
         if ($pidsToExitCodes->nonEmpty()) {
