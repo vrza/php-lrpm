@@ -36,7 +36,7 @@
         "ext-sockets": "*",
         "vrza/array-with-secondary-keys": "dev-main",
         "vrza/cardinal-collections": "dev-main",
-        "vrza/php-tipc": "dev-main",
+        "vrza/php-tipc": "dev-multiple-sockets",
         "vrza/terminal-palette": "dev-main",
         "vrza/text-table-formatter": "dev-main"
     },

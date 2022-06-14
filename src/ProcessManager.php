@@ -10,46 +10,52 @@ use CardinalCollections\Mutable\Map;
 class ProcessManager
 {
     private const SUPERVISOR_PROCESS_TAG = '[lrpm supervisor]';
-    private const CONFIG_POLL_TIME_INIT = 0;
 
     private $shouldRun = true;
 
     private $configurationSourceClass;
     private $configProcessManager;
-    private $configClient;
+    private $newConfig = null;
     private $configPollIntervalSeconds;
-    private $timeOfLastConfigPoll = self::CONFIG_POLL_TIME_INIT;
     private $lastSigUsr1Info = [];
 
     private $workersMetadata;
     private $secondsBetweenProcessStatePolls = 1;
 
+    private $configMessageHandler;
     private $controlMessageHandler;
+    private $messageService;
 
-    public function __construct(string $configurationSourceClass, int $configPollIntervalSeconds = 30)
+    public function __construct(string $configurationSourceClass, int $configPollIntervalSeconds = ConfigurationProcess::DEFAULT_CONFIG_POLL_INTERVAL)
     {
-        fwrite(STDERR, "==> lrpm starting" . PHP_EOL);
+        fwrite(STDERR, '==> lrpm starting' . PHP_EOL);
         $this->configPollIntervalSeconds = $configPollIntervalSeconds;
         $this->workersMetadata = new WorkerMetadata();
         $this->controlMessageHandler = new ControlMessageHandler($this);
-        fwrite(STDERR, "==> Registering supervisor signal handlers" . PHP_EOL);
+        $this->configMessageHandler = new ConfigurationMessageHandler($this);
+        $this->messageService = new MessageService($this->configMessageHandler, $this->controlMessageHandler);
         $this->configurationSourceClass = $configurationSourceClass;
         $this->configProcessManager = new ConfigurationProcessManager();
-        $this->configClient = new ConfigurationClient();
+        fwrite(STDERR, '==> Registering supervisor signal handlers' . PHP_EOL);
         $this->installSignalHandlers();
     }
 
     private function configInitCleanup()
     {
-        $this->controlMessageHandler->destroyMessageServer();
+        $this->messageService->destroyMessageServer();
+        $this->messageService = null;
         $this->controlMessageHandler = null;
+        $this->configMessageHandler = null;
+        $this->configProcessManager = null;
         $this->workersMetadata = null;
     }
 
     private function workerInitCleanup()
     {
-        $this->controlMessageHandler->destroyMessageServer();
+        $this->messageService->destroyMessageServer();
+        $this->messageService = null;
         $this->controlMessageHandler = null;
+        $this->configMessageHandler = null;
         $this->configProcessManager = null;
         $this->workersMetadata = null;
     }
@@ -66,7 +72,7 @@ class ProcessManager
 
     public function scheduleConfigReload(): void
     {
-        $this->timeOfLastConfigPoll = self::CONFIG_POLL_TIME_INIT;
+        $this->configProcessManager->sendSignalToConfigProcess(SIGHUP);
     }
 
     public function scheduleRestartOnDemand($jobId): string
@@ -88,10 +94,6 @@ class ProcessManager
             SIGINT => function (int $signo, $_siginfo) {
                 fwrite(STDERR, "==> Supervisor caught SIGINT ($signo), initiating lrpm shutdown" . PHP_EOL);
                 $this->shutdown();
-            },
-            SIGHUP => function (int $signo, $_siginfo) {
-                fwrite(STDERR, "==> Supervisor caught SIGHUP ($signo), will reload configuration" . PHP_EOL);
-                $this->timeOfLastConfigPoll = self::CONFIG_POLL_TIME_INIT;
             },
             SIGUSR1 => function (int $signo, $siginfo) {
                 fwrite(STDERR, "==> Supervisor caught SIGUSR1 ($signo)" . PHP_EOL);
@@ -136,6 +138,11 @@ class ProcessManager
         );
     }
 
+    public function setNewConfig(array $config): void
+    {
+        $this->newConfig = $config;
+    }
+
     private function startConfigurationProcess(): void
     {
         $supervisorPid = getmypid();
@@ -152,7 +159,7 @@ class ProcessManager
             $configPid = getmypid();
             fwrite(STDERR, "--> Config process with PID $configPid running" . PHP_EOL);
             self::setChildProcessTitle('config');
-            $configurationService = new ConfigurationService($this->configurationSourceClass);
+            $configurationService = new ConfigurationProcess($this->configurationSourceClass, $this->configPollIntervalSeconds);
             $configurationService->runConfigurationProcessLoop($supervisorPid);
         } elseif ($pid > 0) { // parent process
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
@@ -168,10 +175,9 @@ class ProcessManager
                 return;
             }
             if ($remaining == 0) {
-                throw new RuntimeException("Config process did not send readiness notification");
+                throw new RuntimeException('Config process did not send readiness notification');
             }
-            fwrite(STDERR, "==> Supervisor received readiness notification from config process" . PHP_EOL);
-            $this->configClient->findConfigSocket();
+            fwrite(STDERR, '==> Supervisor received readiness notification from config process' . PHP_EOL);
         } else {
             throw new RuntimeException("Error forking config process: $pid");
         }
@@ -256,16 +262,11 @@ class ProcessManager
         }
     }
 
-    private function pollConfigurationSourceForChanges(): void
+    private function updateConfiguration(): void
     {
-        $now = time();
-        if (!is_null($this->configProcessManager->getPID())
-            && $this->timeOfLastConfigPoll + $this->configPollIntervalSeconds <= $now
-        ) {
-            $this->timeOfLastConfigPoll = $now;
+        if (!is_null($this->newConfig)) {
             try {
-                $unvalidatedNewWorkers = $this->configClient->pollConfiguration(self::getSignalHandlers());
-                $newWorkers = ConfigurationValidator::filter($unvalidatedNewWorkers);
+                $newWorkers = ConfigurationValidator::filter($this->newConfig);
                 $this->workersMetadata->purgeRemovedJobs();
                 foreach ($newWorkers as $jobId => $newJobConfig) {
                     if ($this->workersMetadata->has($jobId)) {
@@ -285,8 +286,9 @@ class ProcessManager
                     }
                 }
                 $this->workersMetadata->slateJobStateUpdates();
+                $this->newConfig = null;
             } catch (Exception $e) {
-                fwrite(STDERR, 'Error getting configuration: ' . $e->getMessage() . PHP_EOL);
+                fwrite(STDERR, 'Error updating configuration: ' . $e->getMessage() . PHP_EOL);
             }
         }
     }
@@ -345,7 +347,7 @@ class ProcessManager
     public function run(): void
     {
         self::setSupervisorProcessTitle();
-        $this->controlMessageHandler->startMessageListener();
+        $this->messageService->startMessageListener();
 
         fwrite(STDOUT, '==> Entering lrpm main loop' . PHP_EOL);
         while ($this->shouldRun) {
@@ -355,13 +357,13 @@ class ProcessManager
             } elseif (is_null($retry)) {
                 break;
             }
-            $this->pollConfigurationSourceForChanges();
+            $this->updateConfiguration();
             $this->workersMetadata->slateScheduledRestarts();
             $this->initiateRestarts();
             $this->initiateStops();
             $this->initiateStarts();
             $this->checkStoppingProcesses();
-            $this->controlMessageHandler->checkMessages($this->secondsBetweenProcessStatePolls);
+            $this->messageService->checkMessages($this->secondsBetweenProcessStatePolls);
             pcntl_signal_dispatch();
         }
 
@@ -376,7 +378,7 @@ class ProcessManager
         fwrite(STDOUT, '==> Waiting for all child processes to terminate' . PHP_EOL);
         while (count($this->workersMetadata->getAllPids()) > 0) {
             $this->checkStoppingProcesses();
-            $this->controlMessageHandler->checkMessages(0, 50000);
+            $this->messageService->checkMessages(0, 50000);
             pcntl_signal_dispatch();
             pcntl_signal_dispatch();
         }
