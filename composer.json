@@ -5,7 +5,7 @@
     "keywords": ["php", "long-running", "process", "manager", "posix"],
     "license": "BSD-3-Clause",
     "minimum-stability": "dev",
-    "bin": ["bin/lrpmctl"],
+    "bin": ["bin/lrpm", "bin/lrpmctl"],
     "repositories": [
         {
             "type": "vcs",
