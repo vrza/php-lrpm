@@ -4,6 +4,7 @@ namespace PHPLRPM\Cluster;
 
 interface ClusterConfiguration
 {
-    public function instanceNumber(): int;
-    public function numberOfInstances(): int;
+    public function getInstanceNumber(): int;
+    public function getNumberOfInstances(): int;
+    public function reload();
 }

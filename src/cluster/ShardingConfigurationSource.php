@@ -18,9 +18,25 @@ class ShardingConfigurationSource implements ConfigurationSource
     public function loadConfiguration(): array
     {
         $inputConfig = $this->confSource->loadConfiguration();
-        $numInstances = $this->clusterConf->numberOfInstances();
-        $instance = $this->clusterConf->instanceNumber();
+        $this->clusterConf->reload();
+        $numInstances = $this->clusterConf->getNumberOfInstances();
+        $instance = $this->clusterConf->getInstanceNumber();
+        if (!self::isValidClusterConfig($numInstances, $instance)) {
+            $errorMsg = 'Invalid cluster config: ' .
+                'number of instances = ' . strval($numInstances) .
+                ', instance number = ' . strval($instance);
+            throw new ClusterConfigurationValidationException($errorMsg);
+        }
         return self::filterConfig($inputConfig, $numInstances, $instance);
+    }
+
+    private static function isValidClusterConfig(int $numInstances, int $instance)
+    {
+        return is_int($numInstances)
+            && $numInstances > 0
+            && is_int($instance)
+            && $instance >= 0
+            && $instance < $numInstances;
     }
 
     private static function filterConfig(array $inputConfig, int $numInstances, int $instance): array

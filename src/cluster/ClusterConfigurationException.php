@@ -4,6 +4,6 @@ namespace PHPLRPM\Cluster;
 
 use Exception;
 
-class ConfigFileReadingException extends Exception
+class ClusterConfigurationException extends Exception
 {
 }
