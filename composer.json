@@ -43,6 +43,7 @@
     "autoload": {
         "psr-4": {
             "PHPLRPM\\": "src/",
+            "PHPLRPM\\Cluster\\": "src/cluster/",
             "PHPLRPM\\Test\\": "test/"
         }
     }
