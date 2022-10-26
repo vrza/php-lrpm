@@ -7,46 +7,33 @@ use PHPLRPM\ConfigurationSource;
 class ShardingConfigurationSource implements ConfigurationSource
 {
     private $confSource;
-    private $clusterConf;
+    private $clusterConfProvider;
 
-    public function __construct(ConfigurationSource $confSource, ClusterConfiguration $clusterConf)
+    public function __construct(ConfigurationSource $confSource, ClusterConfigurationProvider $clusterConfProvider)
     {
         $this->confSource = $confSource;
-        $this->clusterConf = $clusterConf;
+        $this->clusterConfProvider = $clusterConfProvider;
     }
 
     public function loadConfiguration(): array
     {
         $inputConfig = $this->confSource->loadConfiguration();
-        $this->clusterConf->reload();
-        $numInstances = $this->clusterConf->getNumberOfInstances();
-        $instance = $this->clusterConf->getInstanceNumber();
-        if (!self::isValidClusterConfig($numInstances, $instance)) {
-            $errorMsg = 'Invalid cluster config: ' .
-                'number of instances = ' . strval($numInstances) .
-                ', instance number = ' . strval($instance);
-            throw new ClusterConfigurationValidationException($errorMsg);
-        }
-        return self::filterConfig($inputConfig, $numInstances, $instance);
+        $clusterConfig = $this->clusterConfProvider->loadClusterConfiguration();
+        return self::filterConfig($inputConfig, $clusterConfig);
     }
 
-    private static function isValidClusterConfig(int $numInstances, int $instance)
+    private static function filterConfig(array $inputConfig, ClusterConfiguration $clusterConf): array
     {
-        return is_int($numInstances)
-            && $numInstances > 0
-            && is_int($instance)
-            && $instance >= 0
-            && $instance < $numInstances;
-    }
-
-    private static function filterConfig(array $inputConfig, int $numInstances, int $instance): array
-    {
+        $numberOfInstances = $clusterConf->getNumberOfInstances();
+        $instanceNumber = $clusterConf->getInstanceNumber();
         $outputConfig = [];
+
         foreach ($inputConfig as $key => $value) {
-            if (crc32($key) % $numInstances == $instance) {
+            if (crc32($key) % $numberOfInstances === $instanceNumber) {
                 $outputConfig[$key] = $value;
             }
         }
+
         return $outputConfig;
     }
 }

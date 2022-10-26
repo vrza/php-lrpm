@@ -3,7 +3,7 @@
 namespace PHPLRPM\Test;
 
 use PHPLRPM\Cluster\ShardingConfigurationSource;
-use PHPLRPM\Cluster\FileBasedClusterConfiguration;
+use PHPLRPM\Cluster\FileBasedClusterConfigurationProvider;
 
 class TestFileBasedClusterConfigurationSource
 {
@@ -15,7 +15,7 @@ class TestFileBasedClusterConfigurationSource
     {
         $this->shardingConfigSource = new ShardingConfigurationSource(
             new MockConfigurationSource(),
-            new FileBasedClusterConfiguration(self::CONFIG_FILE)
+            new FileBasedClusterConfigurationProvider(self::CONFIG_FILE)
         );
     }
 

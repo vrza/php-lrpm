@@ -2,7 +2,7 @@
 
 namespace PHPLRPM\Test;
 
-use PHPLRPM\Cluster\EnvironmentBasedClusterConfiguration;
+use PHPLRPM\Cluster\EnvironmentBasedClusterConfigurationProvider;
 use PHPLRPM\Cluster\ShardingConfigurationSource;
 
 class TestEnvironmentBasedClusterConfigurationSource
@@ -13,7 +13,7 @@ class TestEnvironmentBasedClusterConfigurationSource
     {
         $this->shardingConfigSource = new ShardingConfigurationSource(
             new MockConfigurationSource(),
-            new EnvironmentBasedClusterConfiguration()
+            new EnvironmentBasedClusterConfigurationProvider()
         );
     }
 
