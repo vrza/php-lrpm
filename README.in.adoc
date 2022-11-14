@@ -89,9 +89,11 @@ Unless you are sure that your blocking call can get interrupted by a SIGTERM, se
 
 === Signal handling
 
-LRPM supervisor process installs signal handlers for SIGCHLD, SIGTERM, SIGINT, SIGHUP and SIGUSR1.
+The LRPM supervisor process installs signal handlers for SIGCHLD (child processes termination notifications), SIGUSR1 (configuration process readiness notification), SIGTERM and SIGINT (shut down request).
 
-Worker process installs default signal handlers for SIGTERM and SIGINT. Signal handlers are dispatched between loop cycles, and these default handlers will terminate the Worker.
+The configuration process (the process running user-provided `ConfiguratinoSource` class) installs a signal handler for SIGHUP, that will reset the internal configuration poll timer, effectively making LRPM reload configuration immediately.
+
+Worker processes (processes running user-provided `Worker` classes) install default signal handlers for SIGTERM and SIGINT. Signal handlers are dispatched between loop cycles, and these default handlers will terminate the Worker.
 
 You can implement and install your own signal handlers inside your Worker implementation, but make sure that your Worker process shuts down cleanly after receiving SIGTERM, otherwise the LRPM supervisor will consider it unresponsive and follow up with a SIGKILL.
 
