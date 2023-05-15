@@ -1,8 +1,8 @@
 <?php
 
-namespace PHPLRPM;
+namespace PHPLRPM\Serialization;
 
-class Serialization
+class PHPSerializer implements Serializer
 {
     public static function serialize($data): string
     {

@@ -7,6 +7,7 @@ use RuntimeException;
 use TIPC\FileSystemUtils;
 use TIPC\SocketStreamClient;
 use TIPC\UnixDomainSocketAddress;
+use PHPLRPM\Serialization\Serializer;
 
 class ConfigurationProcess
 {
@@ -20,6 +21,7 @@ class ConfigurationProcess
     private $configPollIntervalSeconds;
     private $timeOfLastConfigPoll = self::CONFIG_POLL_TIME_INIT;
     private $client;
+    private $serializer;
 
     public function findConfigSocket()
     {
@@ -32,10 +34,11 @@ class ConfigurationProcess
         }
     }
 
-    public function __construct(string $configurationSourceClass, int $configPollIntervalSeconds)
+    public function __construct(string $configurationSourceClass, int $configPollIntervalSeconds, Serializer $serializer)
     {
         $this->configurationSource = new $configurationSourceClass();
         $this->configPollIntervalSeconds = $configPollIntervalSeconds;
+        $this->serializer = $serializer;
     }
 
     private function installSignalHandlers(): void
@@ -141,7 +144,7 @@ class ConfigurationProcess
             throw new RuntimeException("Could not connect to socket {$this->configSocket}");
         }
         fwrite(STDERR, '--> Sending new configuration to supervisor' . PHP_EOL);
-        $msg = Serialization::serialize($this->config);
+        $msg = $this->serializer::serialize($this->config);
         if ($this->client->sendMessage($msg) === false) {
             $this->client->disconnect();
             throw new ConfigurationSendException("Could not send config over socket {$this->configSocket}");
