@@ -20,7 +20,7 @@ class ConfigurationMessageHandler implements MessageHandler
 
     public function handleMessage(string $msg): string
     {
-        $config = $this->serializer::deserialize($msg);
+        $config = $this->serializer->deserialize($msg);
         $this->processManager->setNewConfig($config);
         return self::RESP_OK;
     }

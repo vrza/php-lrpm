@@ -28,7 +28,7 @@ class ControlMessageHandler implements MessageHandler
                 return "lrpm: $help";
             case 'jsonstatus':
             case 'status':
-                return JSONSerializer::serialize($this->processManager->getStatus());
+                return (new JSONSerializer())->serialize($this->processManager->getStatus());
             case 'stop':
                 $this->processManager->shutdown();
                 return 'lrpm: Shutting down process manager';

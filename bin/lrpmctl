@@ -144,7 +144,7 @@ function statusResponseHandler(string $response, bool $color): void
  */
 function parseStatus(string $jsonStatus): array
 {
-    $status = JSONSerializer::deserialize($jsonStatus, true);
+    $status = (new JSONSerializer())->deserialize($jsonStatus, true);
     if (!is_array($status)) {
         throw new Exception('cannot parse as JSON');
     }

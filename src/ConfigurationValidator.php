@@ -110,7 +110,7 @@ class ConfigurationValidator
                 fwrite(
                     STDERR,
                     "Invalid configuration for job $jobId: " .
-                    JSONSerializer::serialize($validator->getErrors()) . PHP_EOL
+                    (new JSONSerializer())->serialize($validator->getErrors()) . PHP_EOL
                 );
             }
         }

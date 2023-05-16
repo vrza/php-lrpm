@@ -4,7 +4,7 @@ namespace PHPLRPM\Serialization;
 
 interface Serializer
 {
-    public static function serialize($data): string;
+    public function serialize($data): string;
 
-    public static function deserialize(string $serializedData);
+    public function deserialize(string $serializedData);
 }

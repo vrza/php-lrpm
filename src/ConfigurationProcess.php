@@ -144,7 +144,7 @@ class ConfigurationProcess
             throw new RuntimeException("Could not connect to socket {$this->configSocket}");
         }
         fwrite(STDERR, '--> Sending new configuration to supervisor' . PHP_EOL);
-        $msg = $this->serializer::serialize($this->config);
+        $msg = $this->serializer->serialize($this->config);
         if ($this->client->sendMessage($msg) === false) {
             $this->client->disconnect();
             throw new ConfigurationSendException("Could not send config over socket {$this->configSocket}");
