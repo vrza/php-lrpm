@@ -31,7 +31,7 @@ class ProcessManager
     public function __construct(
         string $configurationSourceClass,
         int $configPollIntervalSeconds = ConfigurationProcess::DEFAULT_CONFIG_POLL_INTERVAL,
-        Serializer $serializer = null
+        ?Serializer $serializer = null
     )
     {
         fwrite(STDERR, '==> lrpm starting' . PHP_EOL);
