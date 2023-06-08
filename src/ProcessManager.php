@@ -4,8 +4,9 @@ namespace PHPLRPM;
 
 use Exception;
 use RuntimeException;
-
 use CardinalCollections\Mutable\Map;
+use PHPLRPM\Serialization\Serializer;
+use PHPLRPM\Serialization\JSONSerializer;
 
 class ProcessManager
 {
@@ -25,14 +26,20 @@ class ProcessManager
     private $configMessageHandler;
     private $controlMessageHandler;
     private $messageService;
+    private $serializer;
 
-    public function __construct(string $configurationSourceClass, int $configPollIntervalSeconds = ConfigurationProcess::DEFAULT_CONFIG_POLL_INTERVAL)
+    public function __construct(
+        string $configurationSourceClass,
+        int $configPollIntervalSeconds = ConfigurationProcess::DEFAULT_CONFIG_POLL_INTERVAL,
+        ?Serializer $serializer = null
+    )
     {
         fwrite(STDERR, '==> lrpm starting' . PHP_EOL);
         $this->configPollIntervalSeconds = $configPollIntervalSeconds;
         $this->workersMetadata = new WorkerMetadata();
+        $this->serializer = $serializer ?? new JSONSerializer();
         $this->controlMessageHandler = new ControlMessageHandler($this);
-        $this->configMessageHandler = new ConfigurationMessageHandler($this);
+        $this->configMessageHandler = new ConfigurationMessageHandler($this, $this->serializer);
         $this->messageService = new MessageService($this->configMessageHandler, $this->controlMessageHandler);
         $this->configurationSourceClass = $configurationSourceClass;
         $this->configProcessManager = new ConfigurationProcessManager();
@@ -159,7 +166,7 @@ class ProcessManager
             $configPid = getmypid();
             fwrite(STDERR, "--> Config process with PID $configPid running" . PHP_EOL);
             self::setChildProcessTitle('config');
-            $configurationService = new ConfigurationProcess($this->configurationSourceClass, $this->configPollIntervalSeconds);
+            $configurationService = new ConfigurationProcess($this->configurationSourceClass, $this->configPollIntervalSeconds, $this->serializer);
             $configurationService->runConfigurationProcessLoop($supervisorPid);
         } elseif ($pid > 0) { // parent process
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);

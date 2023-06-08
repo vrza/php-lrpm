@@ -2,6 +2,8 @@
 
 namespace PHPLRPM;
 
+use PHPLRPM\Serialization\JSONSerializer;
+
 class ConfigurationValidator
 {
     private $config;
@@ -108,7 +110,7 @@ class ConfigurationValidator
                 fwrite(
                     STDERR,
                     "Invalid configuration for job $jobId: " .
-                    json_encode($validator->getErrors()) . PHP_EOL
+                    (new JSONSerializer())->serialize($validator->getErrors()) . PHP_EOL
                 );
             }
         }
