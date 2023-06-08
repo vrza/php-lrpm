@@ -14,12 +14,12 @@ class PHPSerializer implements Serializer
      */
     public function deserialize(string $serializedData)
     {
-         set_error_handler(static function (int $errno, string $errstr): bool {
-             if ($errno === E_NOTICE) {
-                 throw new InternalSerializationException($errstr);
-             }
-             return true;
-         });
+        set_error_handler(static function (int $errno, string $errstr): bool {
+            if ($errno === E_NOTICE) {
+                throw new InternalSerializationException($errstr);
+            }
+            return true;
+        });
         try {
             return unserialize($serializedData);
         } catch (InternalSerializationException $e) {
