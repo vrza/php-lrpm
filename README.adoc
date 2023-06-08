@@ -156,6 +156,10 @@ opcache.enable_cli=1
 opcache.file_cache_only=0
 ----
 
+== Architecture
+
+image::https://raw.githubusercontent.com/vrza/php-lrpm/main/lrpm-architecture.svg[LRPM architecture diagram]
+
 == Development roadmap
 
 === Completed
