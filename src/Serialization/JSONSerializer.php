@@ -9,8 +9,15 @@ class JSONSerializer implements Serializer
         return json_encode($data);
     }
 
+    /**
+     * @throws SerializationException
+     */
     public function deserialize(string $serializedData)
     {
-        return json_decode($serializedData, true);
+        $result = json_decode($serializedData, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new SerializationException(json_last_error_msg());
+        }
+        return $result;
     }
 }
