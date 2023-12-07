@@ -4,9 +4,9 @@ namespace PHPLRPM;
 
 use Exception;
 use RuntimeException;
-use TIPC\FileSystemUtils;
-use TIPC\SocketStreamClient;
-use TIPC\UnixDomainSocketAddress;
+use SimpleIPC\SyMPLib\FileSystemUtils;
+use SimpleIPC\SyMPLib\SocketStreamClient;
+use SimpleIPC\SyMPLib\UnixDomainSocketAddress;
 use PHPLRPM\Serialization\Serializer;
 
 class ConfigurationProcess
