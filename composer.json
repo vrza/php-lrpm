@@ -17,7 +17,7 @@
         },
         {
             "type": "vcs",
-            "url": "https://github.com/vrza/php-tipc"
+            "url": "https://github.com/vrza/php-symplib"
         },
         {
             "type": "vcs",
@@ -34,9 +34,9 @@
         "ext-pcntl": "*",
         "ext-posix": "*",
         "ext-sockets": "*",
-        "vrza/array-with-secondary-keys": "dev-main",
-        "vrza/cardinal-collections": "dev-main",
-        "vrza/php-tipc": "dev-main",
+        "cardinal-collections/array-with-secondary-keys": "dev-main",
+        "cardinal-collections/cardinal-collections": "dev-main",
+        "simple-ipc/php-symplib": "dev-main",
         "vrza/terminal-palette": "dev-main",
         "vrza/text-table-formatter": "dev-main"
     },

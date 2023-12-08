@@ -2,7 +2,7 @@
 
 namespace PHPLRPM;
 
-use TIPC\MessageHandler;
+use SimpleIPC\SyMPLib\MessageHandler;
 use PHPLRPM\Serialization\JSONSerializer;
 
 class ControlMessageHandler implements MessageHandler

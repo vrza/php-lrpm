@@ -3,11 +3,11 @@
 namespace PHPLRPM;
 
 use RuntimeException;
-use TIPC\FileSystemUtils;
-use TIPC\MessageHandler;
-use TIPC\SocketData;
-use TIPC\SocketStreamsServer;
-use TIPC\UnixDomainSocketAddress;
+use SimpleIPC\SyMPLib\FileSystemUtils;
+use SimpleIPC\SyMPLib\MessageHandler;
+use SimpleIPC\SyMPLib\SocketData;
+use SimpleIPC\SyMPLib\SocketStreamsServer;
+use SimpleIPC\SyMPLib\UnixDomainSocketAddress;
 
 class MessageService
 {

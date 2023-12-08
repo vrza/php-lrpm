@@ -53,9 +53,9 @@ if (empty($request)) {
 
 probeForAutoloader($progname);
 
-use TIPC\FileSystemUtils;
-use TIPC\SocketStreamClient;
-use TIPC\UnixDomainSocketAddress;
+use SimpleIPC\SyMPLib\FileSystemUtils;
+use SimpleIPC\SyMPLib\SocketStreamClient;
+use SimpleIPC\SyMPLib\UnixDomainSocketAddress;
 use TextTableFormatter\Table;
 use TerminalPalette\AnsiSeq;
 use PHPLRPM\IPCUtilities;
@@ -131,7 +131,7 @@ function statusResponseHandler(string $response, bool $color): void
         fwrite(STDERR, "Invalid response from lrpm daemon ({$e->getMessage()}): $response" . PHP_EOL);
         exit(EXIT_INVALID_RESPONSE);
     }
-    $ps = ps(pidsFromStatus($status), ['rss']);
+    $ps = ps(pidsFromStatus($status), ['%cpu', 'rss']);
     fwrite(STDOUT, renderStatusTable($status, $ps, $color)->__toString());
 }
 
@@ -179,12 +179,13 @@ function renderStatusTable(iterable $status, iterable $ps, bool $color): Table
     $header = [
         AnsiSeq::get('BOLD', $color) . 'ID'     . AnsiSeq::get('RESET', $color),
         AnsiSeq::get('BOLD', $color) . 'PID'    . AnsiSeq::get('RESET', $color),
+        AnsiSeq::get('BOLD', $color) . '%CPU'   . AnsiSeq::get('RESET', $color),
         AnsiSeq::get('BOLD', $color) . 'RSS'    . AnsiSeq::get('RESET', $color),
         AnsiSeq::get('BOLD', $color) . 'UPTIME' . AnsiSeq::get('RESET', $color),
         AnsiSeq::get('BOLD', $color) . 'START'  . AnsiSeq::get('RESET', $color),
         AnsiSeq::get('BOLD', $color) . 'NAME'   . AnsiSeq::get('RESET', $color)
     ];
-    $align = ['l', 'r', 'r', 'r', 'l', 'l'];
+    $align = ['l', 'r', 'r', 'r', 'r', 'l', 'l'];
     $output = [$header];
     $redNone = AnsiSeq::get('RED', $color) . 'none' . AnsiSeq::get('RESET', $color);
     $redNotAvailable = AnsiSeq::get('RED', $color) . 'n/a' . AnsiSeq::get('RESET', $color);
@@ -197,6 +198,7 @@ function renderStatusTable(iterable $status, iterable $ps, bool $color): Table
         $pid = $state['pid'] ?? null;
         if ($pid !== null && isset($ps[$pid])) {
             $pidFmt = AnsiSeq::get('GREEN', $color) . $pid . AnsiSeq::get('RESET', $color);
+            $pcpuFmt = $ps[$pid]['%cpu'];
             $rssFmt = $ps[$pid]['rss'];
             $startedAtDateTime = new DateTime();
             $startedAtDateTime->setTimestamp($startedAt);
@@ -210,7 +212,7 @@ function renderStatusTable(iterable $status, iterable $ps, bool $color): Table
                 $startedAtFmt = date('Y-m-d H:i:s', $state['restartAt']);
             }
         }
-        $output[] = [$id, $pidFmt, $rssFmt, $uptimeFmt, $startedAtFmt, $name];
+        $output[] = [$id, $pidFmt, $pcpuFmt, $rssFmt, $uptimeFmt, $startedAtFmt, $name];
     }
     return (new Table($output))->setAlignment($align);
 }
