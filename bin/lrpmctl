@@ -176,30 +176,39 @@ function pidsFromStatus($status): array
 
 function renderStatusTable(iterable $status, iterable $ps, bool $color): Table
 {
-    $header = [
-        AnsiSeq::get('BOLD', $color) . 'ID'     . AnsiSeq::get('RESET', $color),
-        AnsiSeq::get('BOLD', $color) . 'PID'    . AnsiSeq::get('RESET', $color),
-        AnsiSeq::get('BOLD', $color) . '%CPU'   . AnsiSeq::get('RESET', $color),
-        AnsiSeq::get('BOLD', $color) . 'RSS'    . AnsiSeq::get('RESET', $color),
-        AnsiSeq::get('BOLD', $color) . 'UPTIME' . AnsiSeq::get('RESET', $color),
-        AnsiSeq::get('BOLD', $color) . 'START'  . AnsiSeq::get('RESET', $color),
-        AnsiSeq::get('BOLD', $color) . 'NAME'   . AnsiSeq::get('RESET', $color)
-    ];
-    $align = ['l', 'r', 'r', 'r', 'r', 'l', 'l'];
-    $output = [$header];
+    $header = [];
+    $align = [];
+    $header[] = AnsiSeq::get('BOLD', $color) . 'ID' . AnsiSeq::get('RESET', $color);
+    $align[] = 'l';
+    $header[] = AnsiSeq::get('BOLD', $color) . 'PID' . AnsiSeq::get('RESET', $color);
+    $align[] = 'r';
+    if (!empty($ps)) {
+        $header[] = AnsiSeq::get('BOLD', $color) . '%CPU' . AnsiSeq::get('RESET', $color);
+        $align[] = 'r';
+        $header[] = AnsiSeq::get('BOLD', $color) . 'RSS' . AnsiSeq::get('RESET', $color);
+        $align[] = 'r';
+    }
+    $header[] = AnsiSeq::get('BOLD', $color) . 'UPTIME' . AnsiSeq::get('RESET', $color);
+    $align[] = 'r';
+    $header[] = AnsiSeq::get('BOLD', $color) . 'START'  . AnsiSeq::get('RESET', $color);
+    $align[] = 'l';
+    $header[] = AnsiSeq::get('BOLD', $color) . 'NAME'   . AnsiSeq::get('RESET', $color);
+    $align[] = 'l';
+
     $redNone = AnsiSeq::get('RED', $color) . 'none' . AnsiSeq::get('RESET', $color);
     $redNotAvailable = AnsiSeq::get('RED', $color) . 'n/a' . AnsiSeq::get('RESET', $color);
 
+    $output = [$header];
     foreach ($status as $id => $metadata) {
         $config = $metadata['config'];
         $name = $config['name'];
         $state = $metadata['state'];
         $startedAt = $state['startedAt'];
         $pid = $state['pid'] ?? null;
-        if ($pid !== null && isset($ps[$pid])) {
+        if ($pid !== null) {
             $pidFmt = AnsiSeq::get('GREEN', $color) . $pid . AnsiSeq::get('RESET', $color);
-            $pcpuFmt = $ps[$pid]['%cpu'];
-            $rssFmt = $ps[$pid]['rss'];
+            $pcpuFmt = isset($ps[$pid]) ? $ps[$pid]['%cpu'] : $redNotAvailable;
+            $rssFmt = isset($ps[$pid]) ? $ps[$pid]['rss'] : $redNotAvailable;
             $startedAtDateTime = new DateTime();
             $startedAtDateTime->setTimestamp($startedAt);
             $uptime = $startedAtDateTime->diff(new DateTime('now'));
@@ -207,13 +216,19 @@ function renderStatusTable(iterable $status, iterable $ps, bool $color): Table
             $startedAtFmt = date('Y-m-d H:i:s', $startedAt);
         } else {
             $pidFmt = $redNone;
-            $rssFmt = $uptimeFmt = $startedAtFmt = $redNotAvailable;
+            $pcpuFmt = $rssFmt = $uptimeFmt = $startedAtFmt = $redNotAvailable;
             if (isset($state['restartAt']) && is_int($state['restartAt']) && $state['restartAt'] > 0) {
                 $startedAtFmt = date('Y-m-d H:i:s', $state['restartAt']);
             }
         }
-        $output[] = [$id, $pidFmt, $pcpuFmt, $rssFmt, $uptimeFmt, $startedAtFmt, $name];
+        $line = [$id, $pidFmt];
+        if (!empty($ps)) {
+            $line = array_merge($line, [$pcpuFmt, $rssFmt]);
+        }
+        $line = array_merge($line, [$uptimeFmt, $startedAtFmt, $name]);
+        $output[] = $line;
     }
+
     return (new Table($output))->setAlignment($align);
 }
 
@@ -224,12 +239,13 @@ function ps(array $pids, array $format): array
     }
     $pidSsv = implode(' ', $pids);
     $fmtCsv = implode(',', $format);
-    $cmd = "ps -o pid,$fmtCsv $pidSsv";
-    exec($cmd, $output);
-    array_shift($output);
+    $cmd = "ps -o pid,$fmtCsv $pidSsv 2>/dev/null";
+    $success = exec($cmd, $output, $resultCode);
+    if ($success === false || $resultCode !== 0) return [];
+    array_shift($output); // skip header line
     $processes = [];
-    foreach ($output as $row) {
-        $fields = explode(' ', preg_replace('/\s+/', ' ', trim($row)));
+    foreach ($output as $line) {
+        $fields = explode(' ', preg_replace('/\s+/', ' ', trim($line)));
         $pid = array_shift($fields);
         for ($i = 0; $i < count($format); $i++) {
             $processes[$pid][$format[$i]] = $fields[$i];
