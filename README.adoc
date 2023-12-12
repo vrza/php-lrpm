@@ -172,7 +172,7 @@ This functionality was offloaded to a generic library https://github.com/vrza/ar
 
 ==== Implement receiving, handling and responding to control messages
 
-Included is the `lrpmctl` tool, which uses the https://github.com/vrza/php-tipc[tipc] library to exchange messages with a running instance of LRPM over a Unix domain socket connection. Some examples of messages include getting the `status` of all workers (see screenshot above), and requesting a `restart` of a worker process.
+Included is the `lrpmctl` tool, which uses the https://github.com/vrza/php-symplib[SyMPLib] library to exchange messages with a running instance of LRPM over a Unix domain socket connection. Some examples of messages include getting the `status` of all workers (see screenshot above), and requesting a `restart` of a worker process.
 
 ==== Make sure unresponsive processes get terminated
 
@@ -184,7 +184,7 @@ Implemented blocking shutdown loop that makes sure all children are terminated o
 
 ==== Configuration process
 
-Made `ConfigurationSource` run in a process separate from the supervisor. This is to prevent `Worker` processes inheriting sockets opened by `ConfigurationSource` code (e.g. persistent database connections). The supervisor process and the config process are using the tipc library to exchange messages over a Unix domain socket connection.
+Made `ConfigurationSource` run in a process separate from the supervisor. This is to prevent `Worker` processes inheriting sockets opened by `ConfigurationSource` code (e.g. persistent database connections). The supervisor process and the config process are using the SyMPLib library to exchange messages over a Unix domain socket connection.
 
 == Some name ideas that were considered
 
