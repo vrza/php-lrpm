@@ -42,6 +42,10 @@ PHP-LRPM uses exponential backoff when attempting to restart a process; some pro
 
 PHP-LRPM configuration is reactive with regard to both process state changes and configuration changes. The process farm configuration is updated through a user-provided `ConfigurationSource`, that can either be polled in order to pull fresh configuration periodically, or block on an event (e.g. receiving a message from some message bus) in order to push fresh configuration in reaction to an event.
 
+=== Horizontally scalable
+
+PHP-LRPM is easily extended to spread a worker process farm over multiple machines. Add-on package https://github.com/vrza/php-lrpm-cluster[php-lrpm-cluster]  provides clustering support.
+
 == Non-goals
 
 Currently, LRPM is not intended to run as PID 1, nor was it tested in this role.
