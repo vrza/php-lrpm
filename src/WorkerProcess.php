@@ -3,14 +3,13 @@
 namespace PHPLRPM;
 
 class WorkerProcess {
-    private $worker;
-
+    private $workerClassName;
     private $ppid = -1;
     private $shouldRun = true;
 
-    public function __construct(Worker $worker)
+    public function __construct(string $workerClassName)
     {
-        $this->worker = $worker;
+        $this->workerClassName = $workerClassName;
         pcntl_signal(SIGTERM,  function (int $signo, $_siginfo) {
             fwrite(STDOUT, "--> Worker caught SIGTERM ($signo)" . PHP_EOL);
             $this->shutdown_signal_handler($signo);
@@ -39,14 +38,16 @@ class WorkerProcess {
     public function work($config): void
     {
         $this->ppid = posix_getppid();
-        $this->worker->start($config);
-        fwrite(STDOUT, "--> Starting Worker loop" . PHP_EOL);
+        fwrite(STDOUT, "--> Initializing Worker (" . $this->workerClassName . ")" . PHP_EOL);
+        $worker = new $this->workerClassName();
+        $worker->start($config);
+        fwrite(STDOUT, "--> Entering Worker loop (" . $this->workerClassName . ")" . PHP_EOL);
         while ($this->shouldRun) {
-            $this->worker->cycle();
+            $worker->cycle();
             $this->checkParent();
             pcntl_signal_dispatch();
         }
-        fwrite(STDOUT, "--> Worker shutdown requested, exiting" . PHP_EOL);
+        fwrite(STDOUT, "--> Worker shutdown requested, exiting (" . $this->workerClassName . ")" . PHP_EOL);
         exit(ExitCodes::EXIT_SUCCESS);
     }
 }
