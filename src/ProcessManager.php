@@ -204,9 +204,8 @@ class ProcessManager
             }
             $childPid = getmypid();
             $workerClassName = $job['config']['workerClass'];
-            fwrite(STDOUT, "--> Child process for job $id with PID $childPid initializing Worker $workerClassName" . PHP_EOL);
-            $worker = new $workerClassName();
-            $workerProcess = new WorkerProcess($worker);
+            fwrite(STDOUT, "--> Child process for job $id with PID $childPid initializing Worker ($workerClassName)" . PHP_EOL);
+            $workerProcess = new WorkerProcess($workerClassName);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             self::setChildProcessTitle("worker $id");
             $workerProcess->work($job['config']);
