@@ -21,8 +21,7 @@ class ProcessUtilities
                     $message .= " $signalName";
                 }
                 fwrite(STDOUT, $message . PHP_EOL);
-            }
-            elseif (self::checkStopCont($pid, $status)) {
+            } elseif (self::checkStopCont($pid, $status)) {
                 continue;
             } else {
                 fwrite(STDERR, sprintf("Unexpected status (0x%x) for child PID %d", $status, $pid) . PHP_EOL);
