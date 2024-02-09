@@ -8,12 +8,12 @@ use CardinalCollections\Mutable\Set;
 
 /*
  * $id => [
- *     'config' => []; // user-defined Worker config
+ *     'config' => []; // user-defined Worker configuration
  *     'state' => [
  *         'pid' => (int)
  *         'restartAt' => (int)
  *         'backoffInterval' => (int) // 1, 2, 4, 8 ...
- *         'cfState',  // ADDED | REMOVED | UNCHANGED since last config poll
+ *         'cfState', // ADDED | REMOVED | UNCHANGED since last config update
  *         'lastExitStatus'
  *     ]
  * ]
