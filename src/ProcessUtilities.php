@@ -21,7 +21,7 @@ class ProcessUtilities
                     $message .= " $signalName";
                 }
                 fwrite(STDOUT, $message . PHP_EOL);
-            } elseif (self::checkStopCont($pid, $status)) {
+            } elseif (self::stoppedOrContinued($pid, $status)) {
                 continue;
             } else {
                 fwrite(STDERR, sprintf("Unexpected status (0x%x) for child PID %d", $status, $pid) . PHP_EOL);
@@ -30,7 +30,7 @@ class ProcessUtilities
         return $results;
     }
 
-    private static function checkStopCont($pid, $status)
+    private static function stoppedOrContinued($pid, $status)
     {
         if (pcntl_wifcontinued($status)) {
             $message = "Child with PID $pid continued with signal 18 SIGCONT";
