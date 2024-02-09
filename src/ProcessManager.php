@@ -252,18 +252,18 @@ class ProcessManager
 
     private function handleTerminatedChildProcesses(): void
     {
-        $pidsToExitCodes = new Map(ProcessUtilities::reapAnyChildren());
+        $pidsToExitStatuses = new Map(ProcessUtilities::reapAnyChildren());
 
         $configPID = $this->configProcessManager->getPID();
-        if ($pidsToExitCodes->has($configPID)) {
+        if ($pidsToExitStatuses->has($configPID)) {
             fwrite(STDERR, "==> Config process with PID $configPID terminated" . PHP_EOL);
-            $pidsToExitCodes->remove($configPID);
+            $pidsToExitStatuses->remove($configPID);
             $this->configProcessManager->handleTerminatedConfigProcess();
         }
 
-        if ($pidsToExitCodes->nonEmpty()) {
-            $pidsToJobIds = $pidsToExitCodes->map(function ($pid, $exitCode) {
-                return [$pid, $this->workersMetadata->updateForTerminatedProcess($pid, $exitCode)];
+        if ($pidsToExitStatuses->nonEmpty()) {
+            $pidsToJobIds = $pidsToExitStatuses->map(function ($pid, $exitStatus) {
+                return [$pid, $this->workersMetadata->updateForTerminatedProcess($pid, $exitStatus)];
             });
             fwrite(STDOUT, '==> Job workers terminated: ' . implode(', ', $pidsToJobIds->values()) . PHP_EOL);
         }
