@@ -1,6 +1,6 @@
 = PHP-LRPM - PHP Long Running Process Manager
 
-PHP-LRPM is a library for managing long-running PHP processes.
+PHP-LRPM is a framework for managing long-running PHP processes.
 
 image::https://raw.githubusercontent.com/vrza/php-lrpm/main/lrpmctl.png[lrpmctl screenshot]
 
