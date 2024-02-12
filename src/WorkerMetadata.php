@@ -8,13 +8,13 @@ use CardinalCollections\Mutable\Set;
 
 /*
  * $id => [
- *     'config' => []; // user-defined Worker config
+ *     'config' => []; // user-defined Worker configuration
  *     'state' => [
  *         'pid' => (int)
  *         'restartAt' => (int)
  *         'backoffInterval' => (int) // 1, 2, 4, 8 ...
- *         'cfState',  // ADDED | REMOVED | UNCHANGED since last config poll
- *         'lastExitCode'
+ *         'cfState', // ADDED | REMOVED | UNCHANGED since last config update
+ *         'lastExitStatus'
  *     ]
  * ]
  */
@@ -70,10 +70,10 @@ class WorkerMetadata {
         return $this->metadata->updateSecondaryKey(self::PID_KEY, $pid, null);
     }
 
-    public function updateForTerminatedProcess(int $pid, int $exitCode)
+    public function updateForTerminatedProcess(int $pid, int $exitStatus)
     {
         $id = $this->metadata->getPrimaryKeyByIndex(self::PID_KEY, $pid);
-        $this->metadata->put("$id.state.lastExitCode", $exitCode);
+        $this->metadata->put("$id.state.lastExitStatus", $exitStatus);
         $this->scheduleRestartWithBackoff($id);
         $this->unmarkAsStopping($id);
         return $this->removePid($pid);
