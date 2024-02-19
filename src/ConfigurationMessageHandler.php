@@ -27,7 +27,7 @@ class ConfigurationMessageHandler implements MessageHandler
             $this->processManager->setNewConfig($config);
             return self::RESP_OK;
         } catch (SerializationException $e) {
-            fwrite(STDERR, 'Error deserializing configuration: ' . $e->getMessage() . PHP_EOL);
+            Log::getInstance()->error('Error deserializing configuration: ' . $e->getMessage());
             return self::RESP_EDESERIALIZE;
         }
     }

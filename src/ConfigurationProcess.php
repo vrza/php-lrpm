@@ -43,9 +43,9 @@ class ConfigurationProcess
 
     private function installSignalHandlers(): void
     {
-        fwrite(STDERR, '--> Config process installing signal handlers' . PHP_EOL);
+        Log::getInstance()->info('--> Config process installing signal handlers');
         pcntl_signal(SIGHUP, function (int $signo, $_siginfo) {
-            fwrite(STDERR, "--> Config process caught SIGHUP ($signo), will reload configuration" . PHP_EOL);
+            Log::getInstance()->notice("--> Config process caught SIGHUP ($signo), will reload configuration");
             $this->timeOfLastConfigPoll = self::CONFIG_POLL_TIME_INIT;
         });
     }
@@ -54,12 +54,12 @@ class ConfigurationProcess
     {
         $this->installSignalHandlers();
         $this->initClient();
-        fwrite(STDERR, "--> Signaling parent $supervisorPid that we are up and running" . PHP_EOL);
+        Log::getInstance()->info("--> Signaling parent $supervisorPid that we are up and running");
         posix_kill($supervisorPid, SIGUSR1);
         while (true) {
             $ppid = posix_getppid();
             if ($ppid != $supervisorPid) {
-                fwrite(STDERR, '--> Parent PID changed, config process exiting' . PHP_EOL);
+                Log::getInstance()->info('--> Parent PID changed, config process exiting');
                 $this->shutdown();
             }
             $haveNewConfig = $this->pollConfigurationSourceForChanges();
@@ -67,7 +67,7 @@ class ConfigurationProcess
                 try {
                     $this->sendConfigToSupervisor();
                 } catch (ConfigurationSendException $e) {
-                    fwrite(STDERR, '--> Could not send config to supervisor: ' . $e->getMessage() . PHP_EOL);
+                    Log::getInstance()->error('--> Could not send config to supervisor: ' . $e->getMessage());
                 }
             }
             if ($this->configPollIntervalSeconds > 0) {
@@ -88,7 +88,7 @@ class ConfigurationProcess
         $haveNewConfig = false;
         $now = time();
         if ($this->timeOfLastConfigPoll + $this->configPollIntervalSeconds <= $now) {
-            fwrite(STDERR, '--> Polling configuration source' . PHP_EOL);
+            Log::getInstance()->info('--> Polling configuration source');
             $this->timeOfLastConfigPoll = $now;
             try {
                 $newConfig = $this->configurationSource->loadConfiguration();
@@ -96,9 +96,9 @@ class ConfigurationProcess
                 if ($haveNewConfig) {
                     $this->config = $newConfig;
                 }
-                if (!$haveNewConfig) fwrite(STDERR, '--> No new config found' . PHP_EOL);
+                if (!$haveNewConfig) Log::getInstance()->info('--> No new config found');
             } catch (Exception $e) {
-                fwrite(STDERR, '--> Error loading configuration from source: ' . $e->getMessage() . PHP_EOL);
+                Log::getInstance()->error('--> Error loading configuration from source: ' . $e->getMessage());
             }
         }
         return $haveNewConfig;
@@ -143,7 +143,7 @@ class ConfigurationProcess
         if (!$this->client->isConnected() && $this->client->connect() === false) {
             throw new RuntimeException("Could not connect to socket {$this->configSocket}");
         }
-        fwrite(STDERR, '--> Sending new configuration to supervisor' . PHP_EOL);
+        Log::getInstance()->info('--> Sending new configuration to supervisor');
         $msg = $this->serializer->serialize($this->config);
         if ($this->client->sendMessage($msg) === false) {
             $this->client->disconnect();

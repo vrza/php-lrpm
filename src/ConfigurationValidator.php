@@ -107,10 +107,9 @@ class ConfigurationValidator
             if ($validator->isValid()) {
                 $filtered[$jobId] = $validator->getConfig();
             } else {
-                fwrite(
-                    STDERR,
+                Log::getInstance()->error(
                     "Invalid configuration for job $jobId: " .
-                    (new JSONSerializer())->serialize($validator->getErrors()) . PHP_EOL
+                    (new JSONSerializer())->serialize($validator->getErrors())
                 );
             }
         }

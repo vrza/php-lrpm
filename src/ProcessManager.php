@@ -7,6 +7,7 @@ use RuntimeException;
 use CardinalCollections\Mutable\Map;
 use PHPLRPM\Serialization\Serializer;
 use PHPLRPM\Serialization\JSONSerializer;
+use VladimirVrzic\Simplogger\StdoutLogger;
 
 class ProcessManager
 {
@@ -34,7 +35,10 @@ class ProcessManager
         ?Serializer $serializer = null
     )
     {
-        fwrite(STDERR, '==> lrpm starting' . PHP_EOL);
+        $logger = new StdoutLogger(TRUE, TRUE, 'lrpm');
+        Log::setInstance($logger);
+
+        Log::getInstance()->info('==> lrpm starting');
         $this->configPollIntervalSeconds = $configPollIntervalSeconds;
         $this->workersMetadata = new WorkerMetadata();
         $this->serializer = $serializer ?? new JSONSerializer();
@@ -43,7 +47,7 @@ class ProcessManager
         $this->messageService = new MessageService($this->configMessageHandler, $this->controlMessageHandler);
         $this->configurationSourceClass = $configurationSourceClass;
         $this->configProcessManager = new ConfigurationProcessManager();
-        fwrite(STDERR, '==> Registering supervisor signal handlers' . PHP_EOL);
+        Log::getInstance()->info('==> Registering supervisor signal handlers');
         $this->installSignalHandlers();
     }
 
@@ -91,19 +95,19 @@ class ProcessManager
     {
         return [
             SIGCHLD => function (int $signo, $_siginfo) {
-                fwrite(STDERR, "==> Supervisor caught SIGCHLD ($signo)" . PHP_EOL);
+                Log::getInstance()->info("==> Supervisor caught SIGCHLD ($signo)");
                 $this->handleTerminatedChildProcesses();
             },
             SIGTERM => function (int $signo, $_siginfo) {
-                fwrite(STDERR, "==> Supervisor caught SIGTERM ($signo), initiating lrpm shutdown" . PHP_EOL);
+                Log::getInstance()->notice("==> Supervisor caught SIGTERM ($signo), initiating lrpm shutdown");
                 $this->shutdown();
             },
             SIGINT => function (int $signo, $_siginfo) {
-                fwrite(STDERR, "==> Supervisor caught SIGINT ($signo), initiating lrpm shutdown" . PHP_EOL);
+                Log::getInstance()->notice("==> Supervisor caught SIGINT ($signo), initiating lrpm shutdown");
                 $this->shutdown();
             },
             SIGUSR1 => function (int $signo, $siginfo) {
-                fwrite(STDERR, "==> Supervisor caught SIGUSR1 ($signo)" . PHP_EOL);
+                Log::getInstance()->info("==> Supervisor caught SIGUSR1 ($signo)");
                 $this->setLastSigUsr1Info($siginfo);
             }
         ];
@@ -164,15 +168,15 @@ class ProcessManager
             }
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             $configPid = getmypid();
-            fwrite(STDERR, "--> Config process with PID $configPid running" . PHP_EOL);
+            Log::getInstance()->info("--> Config process with PID $configPid running");
             self::setChildProcessTitle('config');
             $configurationService = new ConfigurationProcess($this->configurationSourceClass, $this->configPollIntervalSeconds, $this->serializer);
             $configurationService->runConfigurationProcessLoop($supervisorPid);
         } elseif ($pid > 0) { // parent process
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             $this->configProcessManager->setPID($pid);
-            fwrite(STDERR, "==> Forked config process with PID: $pid" . PHP_EOL);
-            fwrite(STDERR, "==> Waiting for config service to let us know it's ready" . PHP_EOL);
+            Log::getInstance()->info("==> Forked config process with PID: $pid");
+            Log::getInstance()->info("==> Waiting for config service to let us know it's ready");
             $remaining = 60;
             while ($this->getLastSigUsr1Pid() !== $pid && $this->shouldRun && $remaining > 0) {
                 $remaining = sleep($remaining);
@@ -184,7 +188,7 @@ class ProcessManager
             if ($remaining == 0) {
                 throw new RuntimeException('Config process did not send readiness notification');
             }
-            fwrite(STDERR, '==> Supervisor received readiness notification from config process' . PHP_EOL);
+            Log::getInstance()->info('==> Supervisor received readiness notification from config process');
         } else {
             throw new RuntimeException("Error forking config process: $pid");
         }
@@ -204,19 +208,19 @@ class ProcessManager
             }
             $childPid = getmypid();
             $workerClassName = $job['config']['workerClass'];
-            fwrite(STDOUT, "--> Child process for job $id with PID $childPid initializing Worker ($workerClassName)" . PHP_EOL);
+            Log::getInstance()->info("--> Child process for job $id with PID $childPid initializing Worker ($workerClassName)");
             $workerProcess = new WorkerProcess($workerClassName);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
             self::setChildProcessTitle("worker $id");
             $workerProcess->work($job['config']);
-            fwrite(STDOUT, "--> Child process for job $id with PID $childPid exiting cleanly" . PHP_EOL);
+            Log::getInstance()->info("--> Child process for job $id with PID $childPid exiting cleanly");
             exit(ExitCodes::EXIT_SUCCESS);
         } elseif ($pid > 0) { // parent process
             $this->workersMetadata->updateStartedJob($id, $pid);
             pcntl_sigprocmask(SIG_UNBLOCK, $signals);
-            fwrite(STDOUT, "==> Forked a child for job $id with PID $pid" . PHP_EOL);
+            Log::getInstance()->info("==> Forked a child for job $id with PID $pid");
         } else {
-            fwrite(STDERR, "==> Error forking a child for job $id: $pid" . PHP_EOL);
+            Log::getInstance()->error("==> Error forking a child for job $id: $pid");
         }
     }
 
@@ -224,12 +228,12 @@ class ProcessManager
     {
         $job = $this->workersMetadata->getJobById($id);
         if (empty($job['state']['pid'])) {
-            fwrite(STDERR, "Cannot stop job $id, it is not running" . PHP_EOL);
+            Log::getInstance()->warning("Cannot stop job $id, it is not running");
             return false;
         }
         if ($this->workersMetadata->isStopping($id)) {
             $elapsed = time() - $this->workersMetadata->stopping[$id]['time'];
-            fwrite(STDERR, "Job $id received SIGTERM $elapsed seconds ago" . PHP_EOL);
+            Log::getInstance()->info("Job $id received SIGTERM $elapsed seconds ago");
             return true;
         }
         $this->workersMetadata->markAsStopping($id);
@@ -243,7 +247,7 @@ class ProcessManager
             $timeout = $job['config']['shutdownTimeoutSeconds'];
             $elapsed = time() - $v['time'];
             if ($elapsed >= $timeout) {
-                fwrite(STDERR,"Job $id with PID {$v['pid']} shutdown timeout reached after $elapsed seconds, sending SIGKILL" . PHP_EOL);
+                Log::getInstance()->notice("Job $id with PID {$v['pid']} shutdown timeout reached after $elapsed seconds, sending SIGKILL");
                 posix_kill($v['pid'], SIGKILL);
             }
         }
@@ -255,7 +259,7 @@ class ProcessManager
 
         $configPID = $this->configProcessManager->getPID();
         if ($pidsToExitStatuses->has($configPID)) {
-            fwrite(STDERR, "==> Config process with PID $configPID terminated" . PHP_EOL);
+            Log::getInstance()->info("==> Config process with PID $configPID terminated");
             $pidsToExitStatuses->remove($configPID);
             $this->configProcessManager->handleTerminatedConfigProcess();
         }
@@ -264,7 +268,7 @@ class ProcessManager
             $pidsToJobIds = $pidsToExitStatuses->map(function ($pid, $exitStatus) {
                 return [$pid, $this->workersMetadata->updateForTerminatedProcess($pid, $exitStatus)];
             });
-            fwrite(STDOUT, '==> Job workers terminated: ' . implode(', ', $pidsToJobIds->values()) . PHP_EOL);
+            Log::getInstance()->info('==> Job workers terminated: ' . implode(', ', $pidsToJobIds->values()));
         }
     }
 
@@ -294,7 +298,7 @@ class ProcessManager
                 $this->workersMetadata->slateJobStateUpdates();
                 $this->newConfig = null;
             } catch (Exception $e) {
-                fwrite(STDERR, 'Error updating configuration: ' . $e->getMessage() . PHP_EOL);
+                Log::getInstance()->error('Error updating configuration: ' . $e->getMessage());
             }
         }
     }
@@ -302,12 +306,11 @@ class ProcessManager
     private function initiateRestarts(): void
     {
         if (count($this->workersMetadata->restart) > 0) {
-            fwrite(STDOUT,
+            Log::getInstance()->info(
                    '==> Need to restart '
                    . count($this->workersMetadata->restart)
                    . ' processes: '
                    . implode(', ', $this->workersMetadata->restart->asArray())
-                   . PHP_EOL
             );
         }
         foreach ($this->workersMetadata->restart as $id) {
@@ -319,12 +322,11 @@ class ProcessManager
     private function initiateStops(): void
     {
         if (count($this->workersMetadata->stop) > 0) {
-            fwrite(STDOUT,
+            Log::getInstance()->info(
                    '==> Need to stop '
                    . count($this->workersMetadata->stop)
                    . ' processes: '
                    . implode(', ', $this->workersMetadata->stop->asArray())
-                   . PHP_EOL
             );
         }
         foreach ($this->workersMetadata->stop as $id) {
@@ -336,12 +338,11 @@ class ProcessManager
     private function initiateStarts(): void
     {
         if (count($this->workersMetadata->start) > 0) {
-            fwrite(STDOUT,
+            Log::getInstance()->info(
                    '==> Need to start '
                    . count($this->workersMetadata->start)
                    . ' processes: '
                    . implode(', ', $this->workersMetadata->start->asArray())
-                   . PHP_EOL
             );
         }
         foreach ($this->workersMetadata->start as $id) {
@@ -355,7 +356,7 @@ class ProcessManager
         self::setSupervisorProcessTitle();
         $this->messageService->startMessageListener();
 
-        fwrite(STDOUT, '==> Entering lrpm main loop' . PHP_EOL);
+        Log::getInstance()->info('==> Entering lrpm main loop');
         while ($this->shouldRun) {
             $retry = $this->configProcessManager->shouldRetryStartingConfigProcess();
             if ($retry) {
@@ -373,15 +374,15 @@ class ProcessManager
             pcntl_signal_dispatch();
         }
 
-        fwrite(STDOUT, '==> Entering lrpm shutdown loop' . PHP_EOL);
-        fwrite(STDOUT, '==> Terminating config process' . PHP_EOL);
+        Log::getInstance()->info('==> Entering lrpm shutdown loop');
+        Log::getInstance()->info('==> Terminating config process');
         $this->configProcessManager->stopConfigurationProcess();
-        fwrite(STDOUT, '==> Initiating shutdown of all worker processes' . PHP_EOL);
+        Log::getInstance()->info('==> Initiating shutdown of all worker processes');
         $pids = $this->workersMetadata->getAllPids();
         foreach ($this->workersMetadata->getJobIdsByPids($pids) as $id) {
             $this->stopWorkerProcess($id);
         }
-        fwrite(STDOUT, '==> Waiting for all child processes to terminate' . PHP_EOL);
+        Log::getInstance()->info('==> Waiting for all child processes to terminate');
         while (count($this->workersMetadata->getAllPids()) > 0) {
             $this->checkStoppingProcesses();
             $this->messageService->checkMessages(0, 50000);
@@ -389,7 +390,7 @@ class ProcessManager
             pcntl_signal_dispatch();
         }
 
-        fwrite(STDOUT, '==> lrpm shut down cleanly' . PHP_EOL);
+        Log::getInstance()->info('==> lrpm shut down cleanly');
     }
 
 }
