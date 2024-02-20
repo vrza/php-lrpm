@@ -37,7 +37,7 @@ class ConfigurationProcessManager
             $this->configProcessRetries = 0;
         } else {
             $backoff = min(2 ** $this->configProcessRetries, self::CONFIG_PROCESS_MAX_BACKOFF_SECONDS);
-            fwrite(STDERR, "==> Backing off on config process spawn (retry: {$this->configProcessRetries}, seconds: $backoff)" . PHP_EOL);
+            Log::getInstance()->info("==> Backing off on config process spawn (retry: {$this->configProcessRetries}, seconds: $backoff)");
             $this->configProcessRestartAt = $now + $backoff;
             $this->configProcessRetries++;
         }
@@ -49,7 +49,7 @@ class ConfigurationProcessManager
             return false;
         }
         if ($this->configProcessRetries > self::CONFIG_PROCESS_MAX_RETRIES) {
-            fwrite(STDERR, '==> Config process failed after ' . self::CONFIG_PROCESS_MAX_RETRIES . ' retries, giving up' . PHP_EOL);
+            Log::getInstance()->error('==> Config process failed after ' . self::CONFIG_PROCESS_MAX_RETRIES . ' retries, giving up');
             return null;
         }
         $now = time();
@@ -78,7 +78,7 @@ class ConfigurationProcessManager
 
     public function sendSignalToConfigProcess(int $signal): void
     {
-        fwrite(STDERR, "==> Sending signal $signal to config process with pid {$this->configProcessId}" . PHP_EOL);
+        Log::getInstance()->info("==> Sending signal $signal to config process with pid {$this->configProcessId}");
         posix_kill($this->configProcessId, $signal);
     }
 

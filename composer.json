@@ -26,6 +26,10 @@
         {
             "type": "vcs",
             "url": "https://github.com/vrza/terminal-palette"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/vrza/simplogger"
         }
     ],
     "require": {
@@ -38,7 +42,8 @@
         "cardinal-collections/cardinal-collections": "dev-main",
         "simple-ipc/php-symplib": "dev-main",
         "vrza/terminal-palette": "dev-main",
-        "vrza/text-table-formatter": "dev-main"
+        "vrza/text-table-formatter": "dev-main",
+        "vrza/simplogger": "dev-main"
     },
     "autoload": {
         "psr-4": {

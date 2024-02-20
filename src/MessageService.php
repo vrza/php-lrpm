@@ -25,7 +25,7 @@ class MessageService
             IPCUtilities::getSocketDirs()
         );
         if (is_null($controlSocketPath)) {
-            fwrite(STDERR, "==> Control messages disabled" . PHP_EOL);
+            Log::getInstance()->notice("==> Control messages disabled");
         } else {
             $socketsData[] = new SocketData(new UnixDomainSocketAddress($controlSocketPath), $controlMessageHandler);
         }
@@ -51,7 +51,7 @@ class MessageService
     public function startMessageListener(): void
     {
         if (!is_null($this->messageServer)) {
-            fwrite(STDOUT, '==> Starting message listener service' . PHP_EOL);
+            Log::getInstance()->info('==> Starting message listener service');
             $this->messageServer->listen();
         }
     }

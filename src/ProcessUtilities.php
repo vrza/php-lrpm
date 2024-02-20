@@ -12,7 +12,7 @@ class ProcessUtilities
                 $results[$pid] = $status;
                 $exit_code = pcntl_wexitstatus($status);
                 $message = "Child with PID $pid exited with code $exit_code";
-                fwrite(STDOUT, $message . PHP_EOL);
+                Log::getInstance()->info($message);
             } elseif (pcntl_wifsignaled($status)) {
                 $results[$pid] = $status;
                 $signal = pcntl_wtermsig($status);
@@ -20,11 +20,11 @@ class ProcessUtilities
                 if ($signalName = self::signalName($signal)) {
                     $message .= " $signalName";
                 }
-                fwrite(STDOUT, $message . PHP_EOL);
+                Log::getInstance()->info($message);
             } elseif (self::stoppedOrContinued($pid, $status)) {
                 continue;
             } else {
-                fwrite(STDERR, sprintf("Unexpected status (0x%x) for child PID %d", $status, $pid) . PHP_EOL);
+                Log::getInstance()->error(sprintf("Unexpected status (0x%x) for child PID %d", $status, $pid));
             }
         }
         return $results;
@@ -34,7 +34,7 @@ class ProcessUtilities
     {
         if (pcntl_wifcontinued($status)) {
             $message = "Child with PID $pid continued with signal 18 SIGCONT";
-            fwrite(STDOUT, $message . PHP_EOL);
+            Log::getInstance()->info($message);
             return true;
         }
 
@@ -44,7 +44,7 @@ class ProcessUtilities
             if ($signalName = self::signalName($signal)) {
                 $message .= " $signalName";
             }
-            fwrite(STDOUT, $message . PHP_EOL);
+            Log::getInstance()->info($message);
             return true;
         }
 

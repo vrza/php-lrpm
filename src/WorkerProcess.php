@@ -11,18 +11,18 @@ class WorkerProcess {
     {
         $this->workerClassName = $workerClassName;
         pcntl_signal(SIGTERM,  function (int $signo, $_siginfo) {
-            fwrite(STDOUT, "--> Worker caught SIGTERM ($signo)" . PHP_EOL);
+            Log::getInstance()->info("--> Worker caught SIGTERM ($signo)");
             $this->shutdown_signal_handler($signo);
         });
         pcntl_signal(SIGINT,  function (int $signo, $_siginfo) {
-            fwrite(STDOUT, "--> Worker caught SIGINT ($signo)" . PHP_EOL);
+            Log::getInstance()->info("--> Worker caught SIGINT ($signo)");
             $this->shutdown_signal_handler($signo);
         });
     }
 
     private function shutdown_signal_handler(int $signo): void
     {
-        fwrite(STDOUT, "--> Worker shutdown signal handler " . $signo . PHP_EOL);
+        Log::getInstance()->info("--> Worker shutdown signal handler " . $signo);
         $this->shouldRun = false;
     }
 
@@ -30,7 +30,7 @@ class WorkerProcess {
     {
         $ppid = posix_getppid();
         if ($ppid != $this->ppid) {
-            fwrite(STDERR, "--> Parent PID changed, worker process exiting" . PHP_EOL);
+            Log::getInstance()->info("--> Parent PID changed, worker process exiting");
             exit(ExitCodes::EXIT_PPID_CHANGED);
         }
     }
@@ -38,16 +38,16 @@ class WorkerProcess {
     public function work($config): void
     {
         $this->ppid = posix_getppid();
-        fwrite(STDOUT, "--> Initializing Worker (" . $this->workerClassName . ")" . PHP_EOL);
+        Log::getInstance()->info("--> Initializing Worker (" . $this->workerClassName . ")");
         $worker = new $this->workerClassName();
         $worker->start($config);
-        fwrite(STDOUT, "--> Entering Worker loop (" . $this->workerClassName . ")" . PHP_EOL);
+        Log::getInstance()->info("--> Entering Worker loop (" . $this->workerClassName . ")");
         while ($this->shouldRun) {
             $worker->cycle();
             $this->checkParent();
             pcntl_signal_dispatch();
         }
-        fwrite(STDOUT, "--> Worker shutdown requested, exiting (" . $this->workerClassName . ")" . PHP_EOL);
+        Log::getInstance()->info("--> Worker shutdown requested, exiting (" . $this->workerClassName . ")");
         exit(ExitCodes::EXIT_SUCCESS);
     }
 }
