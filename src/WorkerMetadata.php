@@ -189,7 +189,7 @@ class WorkerMetadata {
             Log::getInstance()->info("Unmarking job $id as stopping");
             unset($this->stopping[$id]);
         } else {
-            Log::getInstance()->warning("Cannot unmark job $id as stopping, it was not terminated by our signal");
+            Log::getInstance()->info("Job $id was not terminated by our signal");
         }
     }
 
