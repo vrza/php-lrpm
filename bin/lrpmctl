@@ -179,21 +179,21 @@ function renderStatusTable(iterable $status, iterable $ps, bool $color): Table
     $header = [];
     $align = [];
     $header[] = AnsiSeq::get('BOLD', $color) . 'ID' . AnsiSeq::get('RESET', $color);
-    $align[] = 'l';
+    $align[] = Table::LEFT_ALIGN;
     $header[] = AnsiSeq::get('BOLD', $color) . 'PID' . AnsiSeq::get('RESET', $color);
-    $align[] = 'r';
+    $align[] = Table::RIGHT_ALIGN;
     if (!empty($ps)) {
         $header[] = AnsiSeq::get('BOLD', $color) . '%CPU' . AnsiSeq::get('RESET', $color);
-        $align[] = 'r';
+        $align[] = Table::RIGHT_ALIGN;
         $header[] = AnsiSeq::get('BOLD', $color) . 'RSS' . AnsiSeq::get('RESET', $color);
-        $align[] = 'r';
+        $align[] = Table::RIGHT_ALIGN;
     }
     $header[] = AnsiSeq::get('BOLD', $color) . 'UPTIME' . AnsiSeq::get('RESET', $color);
-    $align[] = 'r';
+    $align[] = Table::RIGHT_ALIGN;
     $header[] = AnsiSeq::get('BOLD', $color) . 'START'  . AnsiSeq::get('RESET', $color);
-    $align[] = 'l';
+    $align[] = Table::LEFT_ALIGN;
     $header[] = AnsiSeq::get('BOLD', $color) . 'NAME'   . AnsiSeq::get('RESET', $color);
-    $align[] = 'l';
+    $align[] = Table::LEFT_ALIGN;
 
     $redNone = AnsiSeq::get('RED', $color) . 'none' . AnsiSeq::get('RESET', $color);
     $redNotAvailable = AnsiSeq::get('RED', $color) . 'n/a' . AnsiSeq::get('RESET', $color);
