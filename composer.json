@@ -4,46 +4,19 @@
     "type": "library",
     "keywords": ["php", "long-running", "process", "manager", "posix"],
     "license": "BSD-3-Clause",
-    "minimum-stability": "dev",
     "bin": ["bin/lrpm", "bin/lrpmctl"],
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/vrza/array-with-secondary-keys"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/vrza/cardinal-collections"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/vrza/php-symplib"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/vrza/text-table-formatter"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/vrza/terminal-palette"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/vrza/simplogger"
-        }
-    ],
     "require": {
         "php": ">=7.1",
         "ext-json": "*",
         "ext-pcntl": "*",
         "ext-posix": "*",
         "ext-sockets": "*",
-        "cardinal-collections/array-with-secondary-keys": "dev-main",
-        "cardinal-collections/cardinal-collections": "dev-main",
-        "simple-ipc/php-symplib": "dev-main",
-        "vrza/terminal-palette": "dev-main",
-        "vrza/text-table-formatter": "dev-main",
-        "vrza/simplogger": "dev-main"
+        "cardinal-collections/array-with-secondary-keys": "^1.0.0",
+        "cardinal-collections/cardinal-collections": "^1.0.0",
+        "simple-ipc/php-symplib": "^1.0.0",
+        "vrza/terminal-palette": "^1.0.0",
+        "vrza/text-table-formatter": "^1.0.0",
+        "vrza/simplogger": "^1.0.0"
     },
     "autoload": {
         "psr-4": {
