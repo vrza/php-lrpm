@@ -46,6 +46,10 @@ PHP-LRPM configuration is reactive with regard to both process state changes and
 
 PHP-LRPM is easily extended to spread a worker process farm over multiple machines. Add-on package https://github.com/vrza/php-lrpm-cluster[php-lrpm-cluster]  provides clustering support.
 
+=== Stable
+
+PHP-LRPM is a stable platform that works equally well with existing and legacy PHP codebases and with newly developed code. Concurrent services built on top of PHP-LRPM have been reliably running in production for years.
+
 == Non-goals
 
 Currently, LRPM is not intended to run as PID 1, nor was it tested in this role.
