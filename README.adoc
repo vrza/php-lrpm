@@ -6,13 +6,21 @@ image::https://raw.githubusercontent.com/vrza/php-lrpm/main/lrpmctl.png[lrpmctl 
 
 == Motivation
 
-Dynamic management of long-running processes. Similar in function to process managers like daemontools or supervisord, but is configured through and integrates with PHP code.
+Dynamic management and supervision of PHP processes.
+
+PHP-LRPM Provides a framework for building all kinds of concurrent PHP applications. Application examples include, but are not limited to: message queue consumers, web crawlers, parallel database replication...
+
+On a surface level, LRPM is similar in function to generic process supervisors like daemontools or supervisord, but is configured through PHP and easily and smoothly integrates with existing PHP codebases.
 
 LRPM provides an easy to use yet versatile framework that can vastly simplify many use cases where dynamically orchestrating PHP-CLI processes through a general-purpose process supervisor (e.g. systemd) or scheduler (e.g. cron) would be cumbersome.
 
-LRPM dynamically gets its configuration from a custom source implemented in PHP (for example, user-provided PHP code might read configuration from a database), checks for changes in the configuration and starts/stops processes accordingly.
+While LRPM could be used to build a "prefork"-style HTTP server, and thus could be used to build web services, this is not the primary motivation behind its design -- good specialized frameworks for building HTTP applications in PHP are readily available. The primary motivation behind LRPM is to provide a framework for building PHP-CLI applications using process-level concurrency, in a way that works with many existing PHP libraries and extensions that are not fork safe.
 
 This https://youtu.be/MJkFHMOCEkg[talk by Giorgio Sironi] given at the Dutch PHP Conference in 2017 covers some problems and challenges when implementing long-running PHP processes.
+
+== How it works
+
+LRPM dynamically gets its configuration from a custom source implemented in PHP (for example, user-provided PHP code might read configuration from a database), checks for changes in the configuration and starts/stops "worker" processes accordingly.
 
 == Features
 
@@ -44,15 +52,28 @@ PHP-LRPM configuration is reactive with regard to both process state changes and
 
 === Horizontally scalable
 
-PHP-LRPM is easily extended to spread a worker process farm over multiple machines. Add-on package https://github.com/vrza/php-lrpm-cluster[php-lrpm-cluster]  provides clustering support.
+It is easy to spread a PHP-LRPM process farm across multiple machines. Add-on package https://github.com/vrza/php-lrpm-cluster[php-lrpm-cluster] provides clustering support.
 
 === Stable
 
 PHP-LRPM is a stable platform that works equally well with existing and legacy PHP codebases and with newly developed code. Concurrent services built on top of PHP-LRPM have been reliably running in production for years.
 
+To achieve a high level of stability, PHP-LRPM by design separates trusted framework code from untrusted user code, by running all user code in sandbox processes.
+
+=== Extensible
+
+LRPM is designed to be easily extended without modifying the framework itself. Examples include, but are not limited to:
+
+- Clustering support (https://github.com/vrza/php-lrpm-cluster[php-lrpm-cluster]) is implemented as an extension.
+
+- The https://github.com/vrza/php-symplib[php-symplib] synchronous message passing framework, that PHP-LRPM uses internally, can also be used for communication between user processes, or even for workers communicating with the supervisor process.
+
+- Facilities like detecting memory leaks in user code (LRPM itself is stable in this regard) can easily be implemented by developing specialized worker processes.
+
 == Non-goals
 
-Currently, LRPM is not intended to run as PID 1, nor was it tested in this role.
+- Currently, LRPM is not intended to run as PID 1, nor was it tested in this role.
+- Using main entry points other than `bin/lrpm`, i.e. using `ProcessManager` as a library and instantiating it from custom user PHP-CLI programs, is not supported.
 
 == Usage
 
@@ -144,7 +165,9 @@ You can implement and install your own signal handlers inside your Worker implem
 
 === Implementing a custom entry point
 
-If you need to implement a custom entry point for LRPM, be aware that the code in your custom entry point will run in the supervisor (parent) process, while your `Worker` classes will run in child processes `fork(2)`-ed from the supervisor. The entry point should do no more than set up the autoloader and run the `ProcessManager`. Any open file descriptors apart from stdin/stdout/stderr should be closed before entering the event loop (`ProcessManager->run()`). Sharing open sockets between parent and children through `fork(2)` is not safe! Worker processes should connect to wherever they need to connect to only after they have been spawned.
+If you need to implement a custom entry point for LRPM, this is possible, but not supported.
+
+Be aware that the code in your custom entry point will run in the supervisor (parent) process, while your `Worker` classes will run in child processes `fork(2)`-ed from the supervisor. Ideally the entry point should do no more than set up the autoloader and run the `ProcessManager`. Any open file descriptors apart from stdin/stdout/stderr should be closed before entering the event loop (`ProcessManager->run()`). Sharing open sockets between parent and children through `fork(2)` is not safe! Worker processes should connect to wherever they need to connect to only after they have been spawned.
 
 If unsure, use the provided `bin/lrpm` entry point.
 
@@ -165,6 +188,10 @@ opcache.file_cache_only=0
 ----
 
 == Architecture
+
+LRPM was designed for stability and robustness. Many existing 3rd party PHP extensions are not fork safe, and can fail ungracefully in a process-level concurrent application. To work around this, LRPM runs user code in sandbox processes, providing a pristine code execution environment that benefits 3rd party libraries and extensions that rely on the "happy path".
+
+In the following architecture diagram, green rectangles represent sandbox processes for running untrusted user code (including any extensions and drivers specific to user code). Yellow rectangles represent processes running trusted framework code. While it is possible to use the trusted code as a library, this is not recommended, and supporting such use cases is a non-goal.
 
 image::https://raw.githubusercontent.com/vrza/php-lrpm/main/lrpm-architecture.svg[LRPM architecture diagram]
 
