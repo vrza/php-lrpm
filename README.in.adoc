@@ -12,9 +12,9 @@ PHP-LRPM provides a framework for building all kinds of concurrent PHP applicati
 
 On a surface level, LRPM is similar in function to generic process supervisors like daemontools or supervisord, but is configured through PHP and easily and smoothly integrates with existing PHP codebases.
 
-LRPM provides an easy to use yet versatile framework that can vastly simplify many use cases where dynamically orchestrating PHP-CLI processes through a general-purpose process supervisor (e.g. systemd) or scheduler (e.g. cron) would be cumbersome.
+LRPM provides an easy to use yet versatile framework that can vastly simplify many use cases where dynamically orchestrating PHP CLI SAPI processes through a general-purpose process supervisor (e.g. systemd) or scheduler (e.g. cron) would be cumbersome.
 
-While LRPM could be used to build a "prefork"-style HTTP server, and thus could be used to build web services, this is not the primary motivation behind its design -- good specialized frameworks for building HTTP applications in PHP are readily available. The primary motivation behind LRPM is to provide a framework for building PHP-CLI applications using process-level concurrency, in a way that works with many existing PHP libraries and extensions that are not fork safe.
+While LRPM could be used to build a "prefork"-style HTTP server, and thus could be used to build web services, this is not the primary motivation behind its design -- good specialized frameworks for building HTTP applications in PHP are readily available. The primary motivation behind LRPM is to provide a framework for building PHP CLI SAPI applications using process-level concurrency, in a way that works with many existing PHP libraries and extensions that are not fork safe.
 
 This https://youtu.be/MJkFHMOCEkg[talk by Giorgio Sironi] given at the Dutch PHP Conference in 2017 covers some problems and challenges when implementing long-running PHP processes.
 
@@ -73,7 +73,7 @@ LRPM is designed to be easily extended without modifying the framework itself. E
 == Non-goals
 
 - Currently, LRPM is not intended to run as PID 1, nor was it tested in this role.
-- Using main entry points other than `bin/lrpm`, i.e. using `ProcessManager` as a library and instantiating it from custom user PHP-CLI programs, is not supported.
+- Using main entry points other than `bin/lrpm`, i.e. using `ProcessManager` as a library and instantiating it from custom user programs, is not supported.
 
 == Usage
 
