@@ -8,7 +8,7 @@ image::https://raw.githubusercontent.com/vrza/php-lrpm/main/lrpmctl.png[lrpmctl 
 
 Dynamic management and supervision of PHP processes.
 
-PHP-LRPM Provides a framework for building all kinds of concurrent PHP applications. Application examples include, but are not limited to: message queue consumers, web crawlers, parallel database replication...
+PHP-LRPM provides a framework for building all kinds of concurrent PHP applications. Application examples include, but are not limited to: message queue consumers, web crawlers, parallel database replication...
 
 On a surface level, LRPM is similar in function to generic process supervisors like daemontools or supervisord, but is configured through PHP and easily and smoothly integrates with existing PHP codebases.
 
