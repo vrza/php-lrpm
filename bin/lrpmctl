@@ -14,7 +14,8 @@ const EXIT_INVALID_RESPONSE = 76;
 $shortopts = 'h';
 $longopts = [
     'help',
-    'color::'
+    'color::',
+    'socket:'
 ];
 $options = getopt($shortopts, $longopts, $rest_index);
 $progname = basename($argv[0]);
@@ -23,6 +24,7 @@ $helpmsg = "Usage: $progname [options] <message>
 Options:
   -h, --help         display this help and exit
   --color[=<when>]   use colored output (always/never/auto)
+  --socket=filename  control socket to connect to
 
 Send a 'help' message to a running lrpm instance to receive
 helpful information about messages it can respond to.
@@ -62,8 +64,9 @@ use PHPLRPM\IPCUtilities;
 use PHPLRPM\MessageService;
 use PHPLRPM\Serialization\JSONSerializer;
 
+$controlSocket = $options['socket'] ?? MessageService::DEFAULT_CONTROL_SOCKET_FILE_NAME;
 $socket = FileSystemUtils::findWritableFilePath(
-        MessageService::CONTROL_SOCKET_FILE_NAME,
+        $controlSocket,
         IPCUtilities::getSocketDirs()
 );
 if (is_null($socket)) {

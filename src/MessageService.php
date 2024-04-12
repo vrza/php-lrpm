@@ -11,8 +11,12 @@ use SimpleIPC\SyMPLib\UnixDomainSocketAddress;
 
 class MessageService
 {
-    public const CONFIG_SOCKET_FILE_NAME = 'config';
-    public const CONTROL_SOCKET_FILE_NAME = 'control';
+    public const DEFAULT_CONFIG_SOCKET_FILE_NAME = 'config';
+    public const DEFAULT_CONTROL_SOCKET_FILE_NAME = 'control';
+
+    private static $configSocketFileName = self::DEFAULT_CONFIG_SOCKET_FILE_NAME;
+    private static $controlSocketFileName = self::DEFAULT_CONTROL_SOCKET_FILE_NAME;
+
 
     private $messageServer;
 
@@ -21,7 +25,7 @@ class MessageService
         $socketsData = [];
 
         $controlSocketPath = FileSystemUtils::findCreatableFilePath(
-            self::CONTROL_SOCKET_FILE_NAME,
+            self::$controlSocketFileName,
             IPCUtilities::getSocketDirs()
         );
         if (is_null($controlSocketPath)) {
@@ -31,7 +35,7 @@ class MessageService
         }
 
         $configSocketPath = FileSystemUtils::findCreatableFilePath(
-            self::CONFIG_SOCKET_FILE_NAME,
+            self::$configSocketFileName,
             IPCUtilities::getSocketDirs()
         );
         if (is_null($configSocketPath)) {
@@ -68,6 +72,26 @@ class MessageService
         if (!is_null($this->messageServer)) {
             $this->messageServer->checkMessages($timeoutSeconds, $timeoutMicroseconds);
         }
+    }
+
+    public static function setConfigSocketFileName(string $name): void
+    {
+        self::$configSocketFileName = $name;
+    }
+
+    public static function getConfigSocketFileName(): string
+    {
+        return self::$configSocketFileName;
+    }
+
+    public static function setControlSocketFileName(string $name): void
+    {
+        self::$controlSocketFileName = $name;
+    }
+
+    public static function getControlSocketFileName(): string
+    {
+        return self::$controlSocketFileName;
     }
 
 }
