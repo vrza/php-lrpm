@@ -26,7 +26,7 @@ class ConfigurationProcess
     public function findConfigSocket()
     {
         $this->configSocket = FileSystemUtils::findWritableFilePath(
-            MessageService::CONFIG_SOCKET_FILE_NAME,
+            MessageService::getConfigSocketFileName(),
             IPCUtilities::getSocketDirs()
         );
         if (is_null($this->configSocket)) {
