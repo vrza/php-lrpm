@@ -17,7 +17,6 @@ class MessageService
     private static $configSocketFileName = self::DEFAULT_CONFIG_SOCKET_FILE_NAME;
     private static $controlSocketFileName = self::DEFAULT_CONTROL_SOCKET_FILE_NAME;
 
-
     private $messageServer;
 
     public function __construct(MessageHandler $configMessageHandler, MessageHandler $controlMessageHandler)
