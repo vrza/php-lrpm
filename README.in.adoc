@@ -73,7 +73,7 @@ LRPM is designed to be easily extended without modifying the framework itself. E
 == Non-goals
 
 - Currently, LRPM is not intended to run as PID 1, nor was it tested in this role.
-- Using main entry points other than `bin/lrpm`, i.e. using `ProcessManager` as a library and instantiating it from custom user programs, is not supported.
+- Using main entry points other than `bin/lrpm`, i.e. using `ProcessManager` as a library and instantiating it from custom user programs, is not recommended and not supported.
 
 == Usage
 
@@ -128,11 +128,11 @@ You can implement and install your own signal handlers inside your Worker implem
 
 === Implementing a custom entry point
 
-If you need to implement a custom entry point for LRPM, this is possible, but not supported.
+If for some reason you need to implement a custom entry point for LRPM, this is possible, but not recommended and not supported.
 
-Be aware that the code in your custom entry point will run in the supervisor (parent) process, while your `Worker` classes will run in child processes `fork(2)`-ed from the supervisor. Ideally the entry point should do no more than set up the autoloader and run the `ProcessManager`. Any open file descriptors apart from stdin/stdout/stderr should be closed before entering the event loop (`ProcessManager->run()`). Sharing open sockets between parent and children through `fork(2)` is not safe! Worker processes should connect to wherever they need to connect to only after they have been spawned.
+The code in the entry point runs in the supervisor (parent) process, while `Worker` classes run in child processes `fork(2)`-ed from the supervisor. Ideally the entry point should do no more than set up the autoloader and run the `ProcessManager`. Any open file descriptors apart from stdin/stdout/stderr should be closed before entering the event loop (`ProcessManager->run()`). Sharing open sockets between parent and children through `fork(2)` is not safe! Worker processes should connect to wherever they need to connect to only after they have been spawned.
 
-If unsure, use the provided `bin/lrpm` entry point.
+For these and other reasons it is recommended to use the provided `bin/lrpm` entry point.
 
 == Operating LRPM
 
