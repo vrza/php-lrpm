@@ -1,14 +1,20 @@
 = PHP-LRPM - PHP Long Running Process Manager
 
-PHP-LRPM is a framework for managing long-running PHP processes.
+PHP-LRPM is a framework for managing long-running PHP processes. It can be also be thought of as a process-level concurrent (and, optionally, distributed) PHP application engine.
 
 image::https://raw.githubusercontent.com/vrza/php-lrpm/main/lrpmctl.png[lrpmctl screenshot]
+
+== Quick Start
+
+Included is a bare-bones example application consisting of `test/MockConfigurationSource.php` and `test/MockWorker.php`, it can be started by running `example.sh`.
 
 == Motivation
 
 Dynamic management and supervision of PHP processes.
 
-PHP-LRPM provides a framework for building all kinds of concurrent PHP applications. Application examples include, but are not limited to: message queue consumers, web crawlers, parallel database replication...
+In a nutshel, PHP-LRPM can be described as a process farm state management framework -- it receives declarations of state of the concurrent application (how many processes of which type need to be running), and updates the actual state of the application by spawning and/or terminating worker processes.
+
+Stable and robust applicatinos utilizing process-level concurrency are not easy to program. PHP-LRPM provides a framework for building all kinds of concurrent applications, including (but not limited to) message queue consumers, web crawlers, parallel database replication services...
 
 On a surface level, LRPM is similar in function to generic process supervisors like daemontools or supervisord, but is configured through PHP and easily and smoothly integrates with existing PHP codebases.
 
@@ -20,7 +26,7 @@ This https://youtu.be/MJkFHMOCEkg[talk by Giorgio Sironi] given at the Dutch PHP
 
 == How it works
 
-LRPM dynamically gets its configuration from a custom source implemented in PHP (for example, user-provided PHP code might read configuration from a database), checks for changes in the configuration and starts/stops "worker" processes accordingly.
+LRPM dynamically gets its configuration from a custom source implemented in PHP (for example, user-provided PHP code might read configuration from a database), checks for changes in the configuration and starts/stops "worker" processes accordingly. Depending on application needs, LRPM configuration can be updated either in a poll (periodic) or push (reactive) fashion.
 
 == Features
 
@@ -100,8 +106,6 @@ $config = [
 Class `ConfigurationValidator` is used for config validation internally, and you can also use it to test your `ConfigurationSource` implementation.
 
 If a job's `mtime` returned by the `ConfigurationSource` is newer than `mtime` from previous poll, that job will be restarted with the new configuration.
-
-See `example.php` for a full running example with more details.
 
 ==== Configuration fields
 
